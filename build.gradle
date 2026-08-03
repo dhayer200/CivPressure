@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.deep'
+version = '26.2'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc'
+        url = uri('https://repo.papermc.io/repository/maven-public/')
+    }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.+'
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Ore/biome domain types reference Bukkit enums (Material), so the API must
+    // be on the test runtime classpath too. Tests avoid anything that needs a
+    // running server (e.g. the Biome registry).
+    testImplementation 'io.papermc.paper:paper-api:26.2.build.+'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+tasks.processResources {
+    filteringCharset = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}
+
+tasks.jar {
+    archiveFileName = 'CivPressure.jar'
+}

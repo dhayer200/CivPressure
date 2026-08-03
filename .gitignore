@@ -1,0 +1,12 @@
+# Gradle
+.gradle/
+build/
+
+# Local deploy artifacts (server config backups + log snapshots)
+deploy-backup/
+
+# OS / editor
+.DS_Store
+*.iml
+.idea/
+.vscode/

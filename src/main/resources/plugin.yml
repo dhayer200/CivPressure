@@ -1,0 +1,56 @@
+name: CivPressure
+version: '26.2'
+main: com.deep.civpressure.CivPressurePlugin
+api-version: '26.2'
+description: Biome-based civilization pressure for Paper.
+
+commands:
+  civ:
+    description: CivPressure administration and status command.
+    usage: /civ [status|reload|ore|season|drought|wetseason|durability|compass|giant]
+    permission: civ.help
+  civhelp:
+    description: Shows the CivPressure player help overview.
+    usage: /civhelp
+    permission: civ.help
+
+permissions:
+  civ.admin:
+    description: Grants access to all CivPressure administrative commands.
+    default: op
+    children:
+      civ.reload: true
+      civ.season: true
+      civ.ore: true
+      civ.ore.scan: true
+      civ.ore.process: true
+      civ.durability: true
+      civ.compass.give: true
+      civ.giant.admin: true
+  civ.reload:
+    description: Allows reloading the CivPressure configuration.
+    default: op
+  civ.season:
+    description: Allows managing CivPressure seasons.
+    default: op
+  civ.ore:
+    description: Allows viewing CivPressure ore information.
+    default: op
+  civ.ore.scan:
+    description: Allows scanning chunks for ores.
+    default: op
+  civ.ore.process:
+    description: Allows processing chunks for ore redistribution.
+    default: op
+  civ.durability:
+    description: Allows viewing durability pressure settings.
+    default: op
+  civ.compass.give:
+    description: Allows giving biome compasses.
+    default: op
+  civ.giant.admin:
+    description: Allows viewing, spawning, and clearing giant events.
+    default: op
+  civ.help:
+    description: Allows use of CivPressure help and status commands.
+    default: true

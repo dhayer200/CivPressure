@@ -1,0 +1,491 @@
+modules:
+  ore-redistribution:
+    enabled: true
+  seasons:
+    enabled: true
+  animal-flee:
+    enabled: false
+  fall-damage:
+    enabled: true
+  slow-regen:
+    enabled: true
+  durability-pressure:
+    enabled: true
+  freeze:
+    enabled: false
+  wind:
+    enabled: false
+  drowning:
+    enabled: false
+  biome-compass:
+    enabled: false
+  mob-buffs:
+    enabled: true
+  giant-events:
+    enabled: true
+  mountain-polar-bears:
+    enabled: true
+
+biome-groups:
+  display-names:
+    plains: Plains and Forests
+    iron: Taigas and Savannas
+    gold: Deserts and Badlands
+    lapis: Swamps and Dark Forests
+    redstone: Jungles
+    emerald: Windswept Highlands
+    diamond: Snowy Peaks and Frozen Lands
+    ungrouped: Underground and Unclaimed Wilds
+
+ore-redistribution:
+  max-scan-radius: 5
+  max-process-radius: 5
+  testarea-start-radius: 10000
+  testarea-step: 5000
+  rates:
+    plains:
+      iron: 85
+      gold: 85
+      lapis: 50
+      redstone: 40
+      emerald: 20
+      diamond: 20
+    iron:
+      iron: 140
+      gold: 70
+      lapis: 50
+      redstone: 40
+      emerald: 20
+      diamond: 20
+    gold:
+      iron: 80
+      gold: 140
+      lapis: 50
+      redstone: 40
+      emerald: 20
+      diamond: 20
+    lapis:
+      iron: 80
+      gold: 70
+      lapis: 120
+      redstone: 40
+      emerald: 20
+      diamond: 20
+    redstone:
+      iron: 80
+      gold: 70
+      lapis: 50
+      redstone: 120
+      emerald: 20
+      diamond: 20
+    emerald:
+      iron: 70
+      gold: 60
+      lapis: 50
+      redstone: 40
+      emerald: 200
+      diamond: 80
+    diamond:
+      iron: 70
+      gold: 60
+      lapis: 50
+      redstone: 40
+      emerald: 80
+      diamond: 200
+    ungrouped:
+      iron: 80
+      gold: 80
+      lapis: 80
+      redstone: 80
+      emerald: 60
+      diamond: 60
+
+seasons:
+  overworld-only: true
+  clock-world: ''
+  automatic-rolls-enabled: true
+  roll-check-interval-ticks: 100
+  max-catch-up-days: 32
+  drought-chance: 0.12
+  wet-chance: 0.12
+  drought-block-chance: 0.75
+  drought-block-chance-cold: 0.9
+  wet-bonus-chance: 0.4
+  wet-bonus-chance-cold: 0.6
+  end-chance-start: 0.3
+  end-chance-increase-per-day: 0.045
+  max-end-chance: 0.99
+  broadcast-start-end: true
+  crop-effects-enabled: true
+  drought-crop-effect-enabled: true
+  wet-crop-effect-enabled: true
+  farmland-enabled: true
+  drought-farmland-enabled: true
+  wet-farmland-enabled: true
+  farmland-check-radius: 8
+  farmland-vertical-radius: 4
+  farmland-max-block-checks-per-player: 5000
+  farmland-check-interval-ticks: 100
+  farmland-drought-moisture: 0
+  farmland-wet-moisture: 7
+  crop-materials:
+    - wheat
+    - carrots
+    - potatoes
+    - beetroots
+    - melon_stem
+    - pumpkin_stem
+    - cocoa
+    - sweet_berry_bush
+  cold-biomes:
+    - snowy_taiga
+    - grove
+    - jagged_peaks
+    - frozen_peaks
+    - snowy_slopes
+    - snowy_plains
+    - ice_spikes
+    - frozen_river
+    - frozen_ocean
+    - deep_frozen_ocean
+    - snowy_beach
+
+animal-flee:
+  radius: 4.0
+  pathfinder-speed: 1.5
+  flee-distance: 6.0
+  direction-jitter-degrees: 35.0
+  destination-attempts: 6
+  repath-interval-ticks: 20
+  fallback-velocity: 0.45
+  fallback-vertical-velocity: 0.1
+  interval-ticks: 10
+  max-entities-per-player: 32
+  affect-creative: false
+  affect-spectator: false
+  affected-entities:
+    - chicken
+    - cow
+    - mooshroom
+    - pig
+    - sheep
+    - rabbit
+    - donkey
+    - llama
+
+fall-damage:
+  multiplier: 1.2
+  players-only: true
+
+slow-regen:
+  slow-factor: 1.5
+  sleep-regen-enabled: true
+  sleep-regen-duration-ticks: 2400
+  sleep-regen-amplifier: 0
+  sleep-regen-ambient: false
+  sleep-regen-particles: true
+  sleep-regen-icon: true
+
+durability-pressure:
+  affect-creative: false
+  affect-spectator: false
+  tools-multiplier: 1.025
+  weapons-multiplier: 1.05
+  armor-multiplier: 1.05
+  shields-multiplier: 1.025
+  bows-crossbows-multiplier: 1.05
+  utility-multiplier: 1.025
+  include-mending-items: true
+  respect-unbreaking: true
+  max-extra-damage-per-event: 3
+
+freeze:
+  overworld-only: true
+  interval-ticks: 5
+  light-threshold: 8
+  leather-protects: true
+  freeze-ticks-per-second: 35
+  thaw-ticks-per-second: 20
+  lock-freeze-ticks-while-exposed: true
+  affect-creative: false
+  affect-spectator: false
+  safe-held-items:
+    - torch
+    - soul_torch
+    - lantern
+    - soul_lantern
+  protective-armor:
+    - leather_helmet
+    - leather_chestplate
+    - leather_leggings
+    - leather_boots
+  biomes:
+    - snowy_taiga
+    - grove
+    - jagged_peaks
+    - stony_peaks
+    - windswept_hills
+    - windswept_gravelly_hills
+    - windswept_forest
+    - frozen_peaks
+    - snowy_slopes
+    - snowy_plains
+    - ice_spikes
+    - frozen_river
+    - frozen_ocean
+    - deep_frozen_ocean
+    - snowy_beach
+
+wind:
+  gust-interval-ticks: 100
+  telegraph-ticks: 15
+  actionbar-telegraph: true
+  actionbar-message: A powerful gust is building...
+  overworld-only: true
+  require-configured-biome: true
+  min-y: 140
+  peak-y: 260
+  check-interval-ticks: 200
+  start-chance-per-check: 0.2
+  min-duration-ticks: 1200
+  max-duration-ticks: 3600
+  push-interval-ticks: 10
+  min-strength: 0.025
+  max-strength: 0.12
+  vertical-strength: 0.0
+  sneak-reduce: 0.8
+  indoors-reduce: 0.85
+  direction-change-chance-per-push: 0.02
+  direction-drift: 0.15
+  particle-enabled: true
+  particle: cloud
+  particle-count: 3
+  particle-spread: 0.35
+  sound-enabled: true
+  sound: entity.breeze.idle_air
+  sound-volume: 0.2
+  sound-pitch: 0.75
+  sound-interval-ticks: 100
+  affect-creative: false
+  affect-spectator: false
+  biomes:
+    - snowy_taiga
+    - snowy_plains
+    - ice_spikes
+    - grove
+    - jagged_peaks
+    - stony_peaks
+    - windswept_hills
+    - windswept_gravelly_hills
+    - windswept_forest
+    - frozen_peaks
+    - snowy_slopes
+    - windswept_savanna
+
+drowning:
+  interval-ticks: 20
+  air-drain-multiplier: 2.0
+  respiration-reduction-per-level: 0.25
+  max-extra-drain-per-check: 20
+  minimum-air: -20
+  affect-creative: false
+  affect-spectator: false
+
+mob-buffs:
+  buff-existing-loaded-entities: true
+  restore-loaded-entities-when-disabled: true
+  hostile-health-multiplier: 1.5
+  passive-health-multiplier: 1.75
+  golem-health-multiplier: 2.0
+  golem-knockback-resistance: 1.0
+  heal-newly-buffed-spawns: true
+  cold-skeletons-as-strays: true
+  stray-spawn-reasons:
+    - natural
+    - chunk_gen
+    - spawner
+    - trial_spawner
+    - reinforcements
+    - patrol
+  cold-biomes:
+    - snowy_taiga
+    - grove
+    - frozen_peaks
+    - snowy_slopes
+    - snowy_plains
+    - ice_spikes
+    - frozen_river
+    - frozen_ocean
+    - deep_frozen_ocean
+    - snowy_beach
+
+giant-events:
+  target-players: true
+  target-non-hostile-mobs: true
+  overworld-only: true
+  remove-existing-when-disabled: false
+  spawn-check-interval-ticks: 24000
+  spawn-chance-per-check: 0.25
+  max-giants-per-world: 3
+  min-distance-from-spawn: 1000
+  min-distance-from-players: 80
+  max-distance-from-players: 180
+  location-attempts: 32
+  require-night: true
+  maintenance-interval-ticks: 20
+  despawn-after-ticks: 36000
+  keep-alive-while-players-nearby: true
+  engagement-radius: 256.0
+  follow-range: 256.0
+  pathfinder-speed: 1.0
+  attack-range: 7.0
+  attack-cooldown-ticks: 30
+  health: 200.0
+  damage: 12.0
+  movement-speed: 0.3
+  knockback-resistance: 0.75
+  announce-spawn: true
+  announce-exact-coordinates: true
+  announcement-message: A giant has been sighted in the {direction} wilderness...
+  block-damage: true
+  terrain-damage-enabled: true
+  terrain-damage-chance: 0.5
+  terrain-damage-radius: 2
+  terrain-damage-blocks-per-tick: 6
+  terrain-damage-require-target: true
+  terrain-damage-protected-materials:
+    - bedrock
+    - barrier
+    - command_block
+    - repeating_command_block
+    - chain_command_block
+    - structure_block
+    - jigsaw
+    - end_portal
+    - end_portal_frame
+    - reinforced_deepslate
+    - chest
+    - trapped_chest
+    - barrel
+    - shulker_box
+    - white_shulker_box
+    - orange_shulker_box
+    - magenta_shulker_box
+    - light_blue_shulker_box
+    - yellow_shulker_box
+    - lime_shulker_box
+    - pink_shulker_box
+    - gray_shulker_box
+    - light_gray_shulker_box
+    - cyan_shulker_box
+    - purple_shulker_box
+    - blue_shulker_box
+    - brown_shulker_box
+    - green_shulker_box
+    - red_shulker_box
+    - black_shulker_box
+  allowed-biome-groups:
+    - plains
+    - iron
+    - gold
+    - emerald
+    - diamond
+    - ungrouped
+  loot:
+    clear-vanilla-drops: true
+    experience: 40
+    iron:
+      enabled: true
+      material: iron_ingot
+      minimum: 8
+      maximum: 15
+      chance: 1.0
+    gold:
+      enabled: true
+      material: gold_ingot
+      minimum: 5
+      maximum: 10
+      chance: 0.6
+    emerald:
+      enabled: true
+      material: emerald
+      minimum: 3
+      maximum: 6
+      chance: 0.6
+    diamond:
+      enabled: true
+      material: diamond
+      minimum: 1
+      maximum: 5
+      chance: 0.5
+    trophy:
+      enabled: true
+      material: ghast_tear
+      name: Giant Trophy
+      chance: 1.0
+
+mountain-polar-bears:
+  overworld-only: true
+  min-y: 90
+  spawn-chance: 0.5
+  nearby-radius: 64.0
+  max-nearby: 2
+  spawn-reasons:
+    - natural
+    - chunk_gen
+  biomes:
+    - grove
+    - jagged_peaks
+    - stony_peaks
+    - windswept_hills
+    - windswept_gravelly_hills
+    - windswept_forest
+    - frozen_peaks
+    - snowy_slopes
+
+biome-compass:
+  recipe-enabled: true
+  item-name: Biome Compass
+  item-lore:
+    - Right-click to choose a region.
+    - 'Selected region: {group}'
+  search-radius: 6000
+  update-interval-ticks: 40
+  movement-research-distance: 256
+  cache-duration-seconds: 300
+  async-search: false
+  max-concurrent-searches: 2
+  search-horizontal-interval: 32
+  search-vertical-interval: 64
+  gui-title: Select Biome Group
+  gui-size: 27
+  gui-fill-empty: true
+  gui-filler-material: gray_stained_glass_pane
+  recipe-saplings:
+    - oak_sapling
+    - spruce_sapling
+    - birch_sapling
+    - jungle_sapling
+    - acacia_sapling
+    - dark_oak_sapling
+    - cherry_sapling
+    - pale_oak_sapling
+    - mangrove_propagule
+  group-slots:
+    plains: 10
+    iron: 11
+    gold: 12
+    lapis: 13
+    redstone: 14
+    emerald: 15
+    diamond: 16
+    ungrouped: 22
+  group-icons:
+    plains: grass_block
+    iron: iron_ingot
+    gold: gold_ingot
+    lapis: lapis_lazuli
+    redstone: redstone
+    emerald: emerald
+    diamond: diamond
+    ungrouped: deepslate
