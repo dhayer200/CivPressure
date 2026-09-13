@@ -63,23 +63,23 @@ public final class BiomeGroupRegistry {
                 Biome.BAMBOO_JUNGLE,
                 Biome.SPARSE_JUNGLE);
 
+        // Emerald = all mountainous (non-snowy) highlands.
         register(BiomeGroup.EMERALD,
-                Biome.JAGGED_PEAKS,
                 Biome.STONY_PEAKS,
                 Biome.WINDSWEPT_HILLS,
                 Biome.WINDSWEPT_GRAVELLY_HILLS,
-                Biome.WINDSWEPT_FOREST,
-                Biome.GROVE);
+                Biome.WINDSWEPT_FOREST);
 
+        // Diamond = all snowy land. Frozen oceans/rivers and snowy beaches are
+        // water biomes, so they resolve by depth (see waterBiomes) rather than
+        // being registered here.
         register(BiomeGroup.DIAMOND,
                 Biome.FROZEN_PEAKS,
+                Biome.JAGGED_PEAKS,
                 Biome.SNOWY_SLOPES,
+                Biome.GROVE,
                 Biome.SNOWY_PLAINS,
-                Biome.ICE_SPIKES,
-                Biome.FROZEN_RIVER,
-                Biome.FROZEN_OCEAN,
-                Biome.DEEP_FROZEN_OCEAN,
-                Biome.SNOWY_BEACH);
+                Biome.ICE_SPIKES);
 
         register(BiomeGroup.UNGROUPED,
                 Biome.MUSHROOM_FIELDS,

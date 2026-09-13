@@ -32,7 +32,9 @@ public enum OreType {
     }
 
     public boolean isRedistributed() {
-        return this != COAL && this != COPPER;
+        // Every ore (coal and copper included) is now controlled by the
+        // configurable per-biome rate table in OreRates.
+        return true;
     }
 
     public Material materialFor(boolean deepslate) {

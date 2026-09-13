@@ -54,16 +54,38 @@ class OreRedistributionPlannerTest {
 
     @Test
     void rateOf100LeavesCountExactlyUnchanged() {
-        // Coal is always 100%, so nothing is removed or added.
+        // A 100% rate removes and adds nothing, regardless of the default table.
+        OreRates hundred = new OreRates((path, def) -> 100);
+        OreRedistributionPlanner flat = new OreRedistributionPlanner(hundred);
         SplittableRandom rng = new SplittableRandom(42);
-        assertEquals(5000, simulateYield(BiomeGroup.PLAINS, OreType.COAL, 5000, rng));
+        long yield = 0;
+        for (int i = 0; i < 5000; i++) {
+            if (!flat.shouldRemove(BiomeGroup.PLAINS, OreType.DIAMOND, rng)) {
+                yield++;
+            }
+        }
+        for (int i = 0; i < 5000; i++) {
+            yield += flat.extraAdditions(BiomeGroup.PLAINS, OreType.DIAMOND, rng);
+        }
+        assertEquals(5000, yield);
     }
 
     @Test
     void doubleRateExactlyDoublesOutput() {
-        // Diamond in a diamond biome is 200%: every ore survives and gains exactly one.
+        // A 200% rate keeps every ore and adds exactly one more, regardless of table.
+        OreRates twoHundred = new OreRates((path, def) -> 200);
+        OreRedistributionPlanner doubler = new OreRedistributionPlanner(twoHundred);
         SplittableRandom rng = new SplittableRandom(99);
-        assertEquals(20_000, simulateYield(BiomeGroup.DIAMOND, OreType.DIAMOND, 10_000, rng));
+        long yield = 0;
+        for (int i = 0; i < 10_000; i++) {
+            if (!doubler.shouldRemove(BiomeGroup.DIAMOND, OreType.DIAMOND, rng)) {
+                yield++;
+            }
+        }
+        for (int i = 0; i < 10_000; i++) {
+            yield += doubler.extraAdditions(BiomeGroup.DIAMOND, OreType.DIAMOND, rng);
+        }
+        assertEquals(20_000, yield);
     }
 
     @Test
@@ -77,7 +99,7 @@ class OreRedistributionPlannerTest {
 
     @Test
     void perChunkVariesButRangeAggregateConvergesToRate() {
-        // Diamond in plains is 20%. A single chunk (few diamonds) is noisy, but
+        // Diamond in plains is 80%. A single chunk (few diamonds) is noisy, but
         // aggregated over a large range it converges to the configured rate.
         int diamondsPerChunk = 8;
         int chunks = 4000;
@@ -89,7 +111,7 @@ class OreRedistributionPlannerTest {
             totalYield += simulateYield(BiomeGroup.PLAINS, OreType.DIAMOND, diamondsPerChunk, rng);
         }
         double aggregatePercent = 100.0 * totalYield / totalVanilla;
-        assertTrue(Math.abs(aggregatePercent - 20.0) <= 1.0,
+        assertTrue(Math.abs(aggregatePercent - 80.0) <= 1.0,
                 () -> "aggregate over " + chunks + " chunks was " + aggregatePercent + "%");
     }
 }

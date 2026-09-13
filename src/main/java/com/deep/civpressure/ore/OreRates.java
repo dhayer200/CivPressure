@@ -12,19 +12,24 @@ public final class OreRates {
 
     public OreRates(ConfigIntReader configManager) {
         this.configManager = configManager;
-        defaults.put(BiomeGroup.PLAINS, rates(85, 85, 50, 40, 20, 20));
-        defaults.put(BiomeGroup.IRON, rates(140, 70, 50, 40, 20, 20));
-        defaults.put(BiomeGroup.GOLD, rates(80, 140, 50, 40, 20, 20));
-        defaults.put(BiomeGroup.LAPIS, rates(80, 70, 120, 40, 20, 20));
-        defaults.put(BiomeGroup.REDSTONE, rates(80, 70, 50, 120, 20, 20));
-        defaults.put(BiomeGroup.EMERALD, rates(70, 60, 50, 40, 200, 80));
-        defaults.put(BiomeGroup.DIAMOND, rates(70, 60, 50, 40, 80, 200));
-        defaults.put(BiomeGroup.UNGROUPED, rates(80, 80, 80, 80, 60, 60));
+        //                                    coal cop iron gold  lap  red  eme  dia
+        defaults.put(BiomeGroup.PLAINS, rates(85, 85, 85, 85, 85, 85, 80, 80));
+        defaults.put(BiomeGroup.IRON, rates(85, 85, 140, 90, 75, 75, 75, 75));
+        defaults.put(BiomeGroup.GOLD, rates(85, 85, 90, 140, 75, 75, 75, 75));
+        defaults.put(BiomeGroup.LAPIS, rates(85, 85, 75, 75, 120, 100, 75, 75));
+        defaults.put(BiomeGroup.REDSTONE, rates(85, 85, 75, 75, 100, 120, 75, 75));
+        defaults.put(BiomeGroup.EMERALD, rates(85, 85, 65, 65, 65, 65, 200, 150));
+        defaults.put(BiomeGroup.DIAMOND, rates(85, 85, 65, 65, 65, 65, 150, 200));
+        defaults.put(BiomeGroup.UNGROUPED, rates(90, 90, 90, 90, 90, 90, 90, 90));
     }
 
     public int getRate(BiomeGroup group, OreType oreType) {
-        if (oreType == OreType.COAL || oreType == OreType.COPPER) {
-            return 100;
+        // "flat" profile: every ore is the same percentage of vanilla everywhere
+        // (no biome biasing) - an across-the-board debuff. "biased" uses the
+        // per-region specialization table below.
+        if (isFlatProfile()) {
+            int flatRate = configManager.getInt("ore-redistribution.flat-profile-rate", 90);
+            return Math.max(0, flatRate);
         }
 
         String path = "ore-redistribution.rates."
@@ -35,7 +40,14 @@ public final class OreRates {
         return Math.max(0, configManager.getInt(path, defaultRate));
     }
 
+    private boolean isFlatProfile() {
+        return configManager.getString("ore-redistribution.profile", "biased")
+                .equalsIgnoreCase("flat");
+    }
+
     private Map<OreType, Integer> rates(
+            int coal,
+            int copper,
             int iron,
             int gold,
             int lapis,
@@ -44,6 +56,8 @@ public final class OreRates {
             int diamond
     ) {
         Map<OreType, Integer> groupRates = new EnumMap<>(OreType.class);
+        groupRates.put(OreType.COAL, coal);
+        groupRates.put(OreType.COPPER, copper);
         groupRates.put(OreType.IRON, iron);
         groupRates.put(OreType.GOLD, gold);
         groupRates.put(OreType.LAPIS, lapis);

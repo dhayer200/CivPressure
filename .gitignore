@@ -10,3 +10,5 @@ deploy-backup/
 *.iml
 .idea/
 .vscode/
+run/
+.ftp-netrc

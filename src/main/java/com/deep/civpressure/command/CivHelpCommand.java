@@ -16,35 +16,62 @@ public final class CivHelpCommand implements CommandExecutor {
     ) {
         sender.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Welcome to CivPressure!");
         sender.sendMessage(ChatColor.GRAY
-                + "Every region is good at some things and bad at others, so you'll want to");
+                + "A survival world where the land itself pushes you to explore, settle,");
         sender.sendMessage(ChatColor.GRAY
-                + "explore, settle, trade, and team up to get everything you need.");
+                + "trade, and band together. Here's what's different from normal Minecraft:");
         sender.sendMessage("");
 
-        sender.sendMessage(ChatColor.YELLOW + "Ores: " + ChatColor.GRAY
-                + "Each region is rich in one ore and poorer in the rest.");
+        sender.sendMessage(ChatColor.YELLOW + "Regions & ores: " + ChatColor.GRAY
+                + "each type of land is rich in one ore and poor in others.");
         sender.sendMessage(ChatColor.GRAY
-                + "You can still find every ore anywhere \u2014 it's just rarer outside its home");
+                + "Mountains favor emeralds, snowy lands favor diamonds, deserts gold, and so on.");
         sender.sendMessage(ChatColor.GRAY
-                + "region. No world is ever \"missing\" a resource. Travel or trade for the rest.");
-        sender.sendMessage(ChatColor.AQUA + "  Tip: " + ChatColor.GRAY
-                + "stand somewhere and run " + ChatColor.WHITE + "/civ ore info"
-                + ChatColor.GRAY + " to see what's common here.");
+                + "Every ore still spawns everywhere \u2014 just rarer away from its home region, so");
+        sender.sendMessage(ChatColor.GRAY
+                + "no world is ever missing a resource. Travel or trade to round out your supply.");
+        sender.sendMessage(ChatColor.AQUA + "  Tip: " + ChatColor.GRAY + "run "
+                + ChatColor.WHITE + "/civ ore info" + ChatColor.GRAY
+                + " to see what's common where you stand.");
+        sender.sendMessage("");
+
+        sender.sendMessage(ChatColor.YELLOW + "Biome Compass: " + ChatColor.GRAY
+                + "craft one to hunt down a specific region.");
+        sender.sendMessage(ChatColor.GRAY
+                + "Recipe: a compass surrounded by 8 saplings (any kind). Right-click it to pick");
+        sender.sendMessage(ChatColor.GRAY
+                + "a region, and it points to the nearest one \u2014 great for finding ores or land.");
+        sender.sendMessage("");
+
+        sender.sendMessage(ChatColor.YELLOW + "Nightfall: " + ChatColor.GRAY
+                + "every night is a little more dangerous than the last.");
+        sender.sendMessage(ChatColor.GRAY
+                + "As your world ages, hostile mobs grow stronger and more numerous, hunting");
+        sender.sendMessage(ChatColor.GRAY
+                + "packs stalk players after dark, and zombies can smash through wooden doors.");
+        sender.sendMessage(ChatColor.GRAY
+                + "It peaks around day 50. Build real defenses, light up your base, and don't");
+        sender.sendMessage(ChatColor.GRAY
+                + "sleep through every night alone \u2014 there is safety in numbers.");
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.YELLOW + "Seasons: " + ChatColor.GRAY
-                + "Regions drift between normal, drought, and wet spells.");
+                + "regions drift between normal, drought, and wet spells.");
         sender.sendMessage(ChatColor.GRAY
-                + "Droughts slow crops; wet spells help them. Plan your farms and stockpile.");
-        sender.sendMessage(ChatColor.AQUA + "  Tip: " + ChatColor.GRAY
-                + "check the current weather with " + ChatColor.WHITE + "/civ season status"
-                + ChatColor.GRAY + ".");
+                + "Droughts dry out farmland and slow crops; wet spells help them. Stockpile food.");
+        sender.sendMessage(ChatColor.AQUA + "  Tip: " + ChatColor.GRAY + "check it with "
+                + ChatColor.WHITE + "/civ season status" + ChatColor.GRAY + ".");
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.YELLOW + "Giants: " + ChatColor.GRAY
-                + "Rare, dangerous roaming events \u2014 not normal mobs.");
+                + "rare, dangerous roaming bosses \u2014 not normal mobs.");
         sender.sendMessage(ChatColor.GRAY
-                + "They hit hard and carry good loot. Bring friends; fight or flee.");
+                + "They hit hard, wreck terrain, and carry good loot. Bring friends; fight or flee.");
+        sender.sendMessage("");
+
+        sender.sendMessage(ChatColor.YELLOW + "Tougher survival: " + ChatColor.GRAY
+                + "falls hurt more, natural healing is slower, and gear wears out faster.");
+        sender.sendMessage(ChatColor.GRAY
+                + "Sleeping safely through the night gives you a short regeneration boost.");
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.GOLD + "Handy commands:");

@@ -55,6 +55,18 @@ values are retained.
   loot.
 - Mountain polar bears: configured mountain biomes can produce capped polar
   bear spawns alongside natural passive spawns.
+- Nightfall: behind-the-scenes escalation where each night is more dangerous
+  than the last (scaling with the world's age up to a configurable cap, default
+  50 nights). Night hostiles start +15% on the first night and ramp to their
+  caps (default +150% health, +50% damage) by the cap; only zombies (and zombie
+  variants) also gain speed. Hunting packs spawn near players, and atmospheric
+  sounds play under the MASTER sound category so they ignore per-category volume
+  sliders. Add your own sound IDs to the configured list. Every night zombie is
+  also made a door-breaker (needs Hard difficulty + mobGriefing to actually
+  break; iron doors immune). Past a configurable night, hunting packs can arrive
+  escorted by a terrain-damaging giant (reuses the giant-events system for
+  stats, loot, and despawn). Designed to be the sole source of mob strength (use
+  with the mob-buffs module disabled).
 - Biome Compass: configurable recipe, marked item, selection GUI, cached biome
   searches, and periodic target updates.
 
@@ -89,6 +101,7 @@ configuration section.
 | `/civ giant status` | Show giant-event state and loaded counts. |
 | `/civ giant spawn` | Spawn a test event giant nearby. |
 | `/civ giant clear [world\|all]` | Remove loaded event giants. |
+| `/civ nightfall status` | Show current night, escalation percent, and mob multipliers. |
 
 ## Permissions
 
@@ -103,6 +116,7 @@ configuration section.
 | `civ.durability` | op |
 | `civ.compass.give` | op |
 | `civ.giant.admin` | op |
+| `civ.nightfall` | op |
 | `civ.help` | true |
 
 ## Biome Groups

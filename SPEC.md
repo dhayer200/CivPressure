@@ -704,3 +704,75 @@ Behavior:
 * Add /civ giant spawn, /civ giant clear, and /civ giant status.
 * Use modest configurable iron, gold, emerald, rare diamond, trophy, and XP
   rewards. Giants must not become the best diamond source.
+
+FUTURE OPTIONAL MODULE — NIGHTFALL (ESCALATING NIGHTS)
+
+Do not implement until the existing core modules pass in-game review.
+
+Purpose:
+Fear drives cooperation. Nights get progressively more dangerous the longer a
+world has existed, up to a cap, pushing players to build defenses, group up,
+and post guards. Everything is behind the scenes — there is no meter or UI, just
+mobs that grow stronger, hunting packs, and creepy atmospheric sound.
+
+Escalation clock:
+
+* Measured by the world's age in days (fullTime / 24000), so it persists across
+  restarts with no extra state file.
+* progress = min(nightsSurvived, cap-nights) / cap-nights, in [0, 1].
+* Default cap-nights: 50. Escalation is monotonic and never resets.
+
+Suggested configuration:
+
+modules:
+  nightfall:
+    enabled: false
+
+nightfall:
+  overworld-only: true
+  cap-nights: 50
+  tick-interval-ticks: 200
+  mob-strength:
+    affect-natural-spawns: true
+    restore-when-disabled: true
+    first-night-bonus: 0.15
+    max-health-bonus: 1.5
+    max-damage-bonus: 0.5
+    max-speed-bonus: 0.15   # zombies only
+    zombies-break-doors: true   # needs Hard + mobGriefing to actually break
+  spawns:
+    enabled: true
+    mob-types: [zombie, skeleton, spider, husk, stray]
+    min-pack-size: 2   # packs spawn from the first night
+    max-pack-size: 6
+    max-nearby-per-player: 24
+  sounds:
+    enabled: true
+    category: master
+    night-curve: true
+    list: [ambient.cave, entity.warden.heartbeat, ...]
+  giant:
+    enabled: true
+    first-night: 15         # earliest night a giant escorts a pack
+    chance-per-pack: 0.15
+    max-per-world: 1
+    announce: false
+
+Behavior:
+
+* Only acts at night in eligible worlds for survival/adventure players.
+* Strength buffs are AttributeModifiers (MULTIPLY_SCALAR_1) keyed by the plugin.
+  Nightfall is intended to be the sole source of mob strength (run it with the
+  mob-buffs module disabled). Health and damage start at first-night-bonus on
+  the first night and ramp to their caps; speed has no first-night floor and is
+  applied only to zombies (and zombie variants). Buffs are applied to hostiles
+  that spawn at night and to spawned packs, and removed from loaded entities
+  when the module is disabled if restore-when-disabled is true.
+* Hunting packs spawn near players on the surface, scale in size and frequency
+  with progress, are capped per player, and target the nearest player.
+* Sounds play under the configured category (MASTER by default) so per-category
+  volume sliders do not silence them; frequency scales with progress and, if
+  night-curve is on, peaks toward midnight. Any vanilla sound id is accepted and
+  server operators can add their own.
+* Add /civ nightfall status (civ.nightfall) showing the current night,
+  escalation percent, and effective mob multipliers per world.

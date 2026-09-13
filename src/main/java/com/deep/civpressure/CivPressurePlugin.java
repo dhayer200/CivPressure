@@ -10,6 +10,8 @@ import com.deep.civpressure.giant.GiantEventListener;
 import com.deep.civpressure.giant.GiantEventManager;
 import com.deep.civpressure.mob.MobBuffListener;
 import com.deep.civpressure.mob.MobBuffManager;
+import com.deep.civpressure.nightfall.NightfallListener;
+import com.deep.civpressure.nightfall.NightfallManager;
 import com.deep.civpressure.ore.OrePopulateListener;
 import com.deep.civpressure.ore.OreRates;
 import com.deep.civpressure.ore.OreRedistributor;
@@ -20,7 +22,6 @@ import com.deep.civpressure.season.SeasonFarmlandListener;
 import com.deep.civpressure.season.SeasonManager;
 import com.deep.civpressure.durability.DurabilityPressureListener;
 import com.deep.civpressure.survival.SurvivalEventListener;
-import com.deep.civpressure.survival.SurvivalHazardManager;
 import com.deep.civpressure.wildlife.MountainPolarBearListener;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -35,10 +36,10 @@ public final class CivPressurePlugin extends JavaPlugin {
     private ProcessedChunkStore processedChunkStore;
     private OreRedistributor oreRedistributor;
     private SeasonManager seasonManager;
-    private SurvivalHazardManager survivalHazardManager;
     private MobBuffManager mobBuffManager;
     private BiomeCompassManager biomeCompassManager;
     private GiantEventManager giantEventManager;
+    private NightfallManager nightfallManager;
 
     @Override
     public void onEnable() {
@@ -55,10 +56,10 @@ public final class CivPressurePlugin extends JavaPlugin {
         processedChunkStore.load();
         oreRedistributor = new OreRedistributor(biomeGroupRegistry, oreRates, processedChunkStore);
         seasonManager = new SeasonManager(this, configManager, biomeGroupRegistry);
-        survivalHazardManager = new SurvivalHazardManager(this, configManager);
         mobBuffManager = new MobBuffManager(this, configManager);
         biomeCompassManager = new BiomeCompassManager(this, configManager, biomeGroupRegistry);
         giantEventManager = new GiantEventManager(this, configManager, biomeGroupRegistry);
+        nightfallManager = new NightfallManager(this, configManager, giantEventManager);
 
         registerCommands();
         getServer().getPluginManager().registerEvents(
@@ -88,11 +89,14 @@ public final class CivPressurePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new MountainPolarBearListener(configManager),
                 this);
+        getServer().getPluginManager().registerEvents(
+                new NightfallListener(nightfallManager),
+                this);
         seasonManager.start();
-        survivalHazardManager.start();
         mobBuffManager.start();
         biomeCompassManager.start();
         giantEventManager.start();
+        nightfallManager.start();
         getLogger().info("CivPressure enabled");
     }
 
@@ -101,14 +105,14 @@ public final class CivPressurePlugin extends JavaPlugin {
         if (seasonManager != null) {
             seasonManager.stop();
         }
-        if (survivalHazardManager != null) {
-            survivalHazardManager.stop();
-        }
         if (biomeCompassManager != null) {
             biomeCompassManager.stop();
         }
         if (giantEventManager != null) {
             giantEventManager.stop();
+        }
+        if (nightfallManager != null) {
+            nightfallManager.stop();
         }
     }
 
@@ -148,13 +152,17 @@ public final class CivPressurePlugin extends JavaPlugin {
         return Objects.requireNonNull(giantEventManager, "GiantEventManager is not loaded");
     }
 
+    public NightfallManager getNightfallManager() {
+        return Objects.requireNonNull(nightfallManager, "NightfallManager is not loaded");
+    }
+
     public void reloadConfiguration() {
         configManager.load();
         seasonManager.refreshConfiguration();
-        survivalHazardManager.reload();
         mobBuffManager.reload();
         biomeCompassManager.reload();
         giantEventManager.reload();
+        nightfallManager.reload();
     }
 
     private void registerCommands() {

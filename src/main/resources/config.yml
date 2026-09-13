@@ -3,27 +3,21 @@ modules:
     enabled: true
   seasons:
     enabled: true
-  animal-flee:
-    enabled: false
   fall-damage:
     enabled: true
   slow-regen:
     enabled: true
   durability-pressure:
     enabled: true
-  freeze:
-    enabled: false
-  wind:
-    enabled: false
-  drowning:
-    enabled: false
   biome-compass:
-    enabled: false
+    enabled: true
   mob-buffs:
     enabled: true
   giant-events:
     enabled: true
   mountain-polar-bears:
+    enabled: true
+  nightfall:
     enabled: true
 
 biome-groups:
@@ -42,63 +36,91 @@ ore-redistribution:
   max-process-radius: 5
   testarea-start-radius: 10000
   testarea-step: 5000
-  rates:
-    plains:
-      iron: 85
-      gold: 85
-      lapis: 50
-      redstone: 40
-      emerald: 20
-      diamond: 20
-    iron:
-      iron: 140
-      gold: 70
-      lapis: 50
-      redstone: 40
-      emerald: 20
-      diamond: 20
-    gold:
-      iron: 80
-      gold: 140
-      lapis: 50
-      redstone: 40
-      emerald: 20
-      diamond: 20
-    lapis:
-      iron: 80
-      gold: 70
-      lapis: 120
-      redstone: 40
-      emerald: 20
-      diamond: 20
-    redstone:
-      iron: 80
-      gold: 70
-      lapis: 50
-      redstone: 120
-      emerald: 20
-      diamond: 20
-    emerald:
-      iron: 70
-      gold: 60
-      lapis: 50
-      redstone: 40
-      emerald: 200
-      diamond: 80
-    diamond:
-      iron: 70
-      gold: 60
-      lapis: 50
-      redstone: 40
-      emerald: 80
-      diamond: 200
-    ungrouped:
-      iron: 80
-      gold: 80
-      lapis: 80
-      redstone: 80
-      emerald: 60
-      diamond: 60
+  # Which ore configuration is active. Two switchable profiles:
+  #   flat   = every ore is 'flat-profile-rate'% of vanilla EVERYWHERE, with no
+  #            biome biasing (an across-the-board debuff). The 'rates:' table is
+  #            ignored while this is selected.
+  #   biased = the per-region specialization table under 'rates:' (mountains
+  #            favor emerald, snowy favors diamond, etc.).
+  # To switch back to the biased world: set this to 'biased' and un-comment the
+  # 'rates:' block below, then /civ reload.
+  profile: flat
+  flat-profile-rate: 90
+  # Percent of vanilla generation per biome group. 100 = vanilla, 200 = double,
+  # 0 = none. ACTIVE ONLY WHEN profile: biased (currently commented out).
+  # rates:
+  #   plains:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 85
+  #     gold: 85
+  #     lapis: 85
+  #     redstone: 85
+  #     emerald: 80
+  #     diamond: 80
+  #   iron:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 140
+  #     gold: 90
+  #     lapis: 75
+  #     redstone: 75
+  #     emerald: 75
+  #     diamond: 75
+  #   gold:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 90
+  #     gold: 140
+  #     lapis: 75
+  #     redstone: 75
+  #     emerald: 75
+  #     diamond: 75
+  #   lapis:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 75
+  #     gold: 75
+  #     lapis: 120
+  #     redstone: 100
+  #     emerald: 75
+  #     diamond: 75
+  #   redstone:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 75
+  #     gold: 75
+  #     lapis: 100
+  #     redstone: 120
+  #     emerald: 75
+  #     diamond: 75
+  #   emerald:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 65
+  #     gold: 65
+  #     lapis: 65
+  #     redstone: 65
+  #     emerald: 200
+  #     diamond: 150
+  #   diamond:
+  #     coal: 85
+  #     copper: 85
+  #     iron: 65
+  #     gold: 65
+  #     lapis: 65
+  #     redstone: 65
+  #     emerald: 150
+  #     diamond: 200
+  #   ungrouped:
+  #     coal: 90
+  #     copper: 90
+  #     iron: 90
+  #     gold: 90
+  #     lapis: 90
+  #     redstone: 90
+  #     emerald: 90
+  #     diamond: 90
 
 seasons:
   overworld-only: true
@@ -150,29 +172,6 @@ seasons:
     - deep_frozen_ocean
     - snowy_beach
 
-animal-flee:
-  radius: 4.0
-  pathfinder-speed: 1.5
-  flee-distance: 6.0
-  direction-jitter-degrees: 35.0
-  destination-attempts: 6
-  repath-interval-ticks: 20
-  fallback-velocity: 0.45
-  fallback-vertical-velocity: 0.1
-  interval-ticks: 10
-  max-entities-per-player: 32
-  affect-creative: false
-  affect-spectator: false
-  affected-entities:
-    - chicken
-    - cow
-    - mooshroom
-    - pig
-    - sheep
-    - rabbit
-    - donkey
-    - llama
-
 fall-damage:
   multiplier: 1.2
   players-only: true
@@ -199,107 +198,18 @@ durability-pressure:
   respect-unbreaking: true
   max-extra-damage-per-event: 3
 
-freeze:
-  overworld-only: true
-  interval-ticks: 5
-  light-threshold: 8
-  leather-protects: true
-  freeze-ticks-per-second: 35
-  thaw-ticks-per-second: 20
-  lock-freeze-ticks-while-exposed: true
-  affect-creative: false
-  affect-spectator: false
-  safe-held-items:
-    - torch
-    - soul_torch
-    - lantern
-    - soul_lantern
-  protective-armor:
-    - leather_helmet
-    - leather_chestplate
-    - leather_leggings
-    - leather_boots
-  biomes:
-    - snowy_taiga
-    - grove
-    - jagged_peaks
-    - stony_peaks
-    - windswept_hills
-    - windswept_gravelly_hills
-    - windswept_forest
-    - frozen_peaks
-    - snowy_slopes
-    - snowy_plains
-    - ice_spikes
-    - frozen_river
-    - frozen_ocean
-    - deep_frozen_ocean
-    - snowy_beach
-
-wind:
-  gust-interval-ticks: 100
-  telegraph-ticks: 15
-  actionbar-telegraph: true
-  actionbar-message: A powerful gust is building...
-  overworld-only: true
-  require-configured-biome: true
-  min-y: 140
-  peak-y: 260
-  check-interval-ticks: 200
-  start-chance-per-check: 0.2
-  min-duration-ticks: 1200
-  max-duration-ticks: 3600
-  push-interval-ticks: 10
-  min-strength: 0.025
-  max-strength: 0.12
-  vertical-strength: 0.0
-  sneak-reduce: 0.8
-  indoors-reduce: 0.85
-  direction-change-chance-per-push: 0.02
-  direction-drift: 0.15
-  particle-enabled: true
-  particle: cloud
-  particle-count: 3
-  particle-spread: 0.35
-  sound-enabled: true
-  sound: entity.breeze.idle_air
-  sound-volume: 0.2
-  sound-pitch: 0.75
-  sound-interval-ticks: 100
-  affect-creative: false
-  affect-spectator: false
-  biomes:
-    - snowy_taiga
-    - snowy_plains
-    - ice_spikes
-    - grove
-    - jagged_peaks
-    - stony_peaks
-    - windswept_hills
-    - windswept_gravelly_hills
-    - windswept_forest
-    - frozen_peaks
-    - snowy_slopes
-    - windswept_savanna
-
-drowning:
-  interval-ticks: 20
-  air-drain-multiplier: 2.0
-  respiration-reduction-per-level: 0.25
-  max-extra-drain-per-check: 20
-  minimum-air: -20
-  affect-creative: false
-  affect-spectator: false
-
 mob-buffs:
   buff-existing-loaded-entities: true
   restore-loaded-entities-when-disabled: true
-  hostile-health-multiplier: 1.5
+  # Nightfall owns ALL hostile strength (health/damage/speed), so keep this at
+  # 1.0 to avoid double-buffing hostiles. Passive + golem buffs stay high here.
+  hostile-health-multiplier: 1.0
   passive-health-multiplier: 1.75
   golem-health-multiplier: 2.0
   golem-knockback-resistance: 1.0
   heal-newly-buffed-spawns: true
-  cold-skeletons-as-strays: true
+  # Off so mob-buffs stays purely passive/golem; Nightfall handles all hostiles.
+  cold-skeletons-as-strays: false
   stray-spawn-reasons:
     - natural
     - chunk_gen
@@ -349,10 +259,12 @@ giant-events:
   announcement-message: A giant has been sighted in the {direction} wilderness...
   block-damage: true
   terrain-damage-enabled: true
-  terrain-damage-chance: 0.5
-  terrain-damage-radius: 2
-  terrain-damage-blocks-per-tick: 6
-  terrain-damage-require-target: true
+  # Explosive: every maintenance tick it blasts a TNT-sized crater wherever it
+  # walks. Containers and the protected-materials list below are always spared.
+  terrain-damage-chance: 1.0
+  terrain-damage-radius: 4
+  terrain-damage-blocks-per-tick: 200
+  terrain-damage-require-target: false
   terrain-damage-protected-materials:
     - bedrock
     - barrier
@@ -426,13 +338,15 @@ giant-events:
 
 mountain-polar-bears:
   overworld-only: true
-  min-y: 90
-  spawn-chance: 0.5
+  # Ground level so bears roam snowy plains/ice spikes, not just high peaks.
+  min-y: 60
+  spawn-chance: 0.65
   nearby-radius: 64.0
-  max-nearby: 2
+  max-nearby: 8
   spawn-reasons:
     - natural
     - chunk_gen
+  # Every mountainous & snowy biome.
   biomes:
     - grove
     - jagged_peaks
@@ -442,6 +356,10 @@ mountain-polar-bears:
     - windswept_forest
     - frozen_peaks
     - snowy_slopes
+    - snowy_plains
+    - ice_spikes
+    - snowy_taiga
+    - snowy_beach
 
 biome-compass:
   recipe-enabled: true
@@ -489,3 +407,108 @@ biome-compass:
     emerald: emerald
     diamond: diamond
     ungrouped: deepslate
+
+nightfall:
+  overworld-only: true
+  # Nights get more dangerous with the world's age (in days) until this cap.
+  cap-nights: 50
+  # How often the module checks each player for sounds and pack spawns (ticks).
+  tick-interval-ticks: 200
+  mob-strength:
+    # Also strengthen normal hostiles that spawn at night, not just night packs.
+    affect-natural-spawns: true
+    # Strip escalation buffs from loaded mobs when the module is turned off.
+    restore-when-disabled: true
+    # Bonus applied on the very first night (health and damage; speed is excluded).
+    # 0.0 means night 1 hostiles are fully vanilla; the buff ramps up from there.
+    first-night-bonus: 0.0
+    # Bonuses reached at the cap (day cap-nights).
+    max-health-bonus: 1.5
+    max-damage-bonus: 0.5
+    # Speed only applies to zombies (and zombie variants); all other mobs keep
+    # vanilla speed. Ramps from 0 on the first night to this bonus at the cap.
+    max-speed-bonus: 0.15
+    # Make every night zombie able to break wooden/copper doors (vanilla only
+    # gives ~10% of zombies this). NOTE: actual breaking still needs the world on
+    # Hard difficulty with the mobGriefing gamerule true. Iron doors are immune.
+    zombies-break-doors: true
+  spawn-rate:
+    # Increase the effective night spawn rate: chance to spawn one extra hostile
+    # next to each natural night spawn. 0.25 = +25%. Values above 1 add more than
+    # one (e.g. 1.5 = one guaranteed extra plus a 50% chance of a second).
+    enabled: true
+    bonus: 0.25
+  spawns:
+    enabled: true
+    min-distance: 16.0
+    max-distance: 40.0
+    location-attempts: 12
+    nearby-radius: 48.0
+    max-nearby-per-player: 24
+    # A diversified siege is GUARANTEED near each player once per night (unlike
+    # vanilla zombie sieges, which are only a nightly chance). Its size scales
+    # from min (night 1) to max (cap). At least one jockey is always included.
+    min-pack-size: 6
+    max-pack-size: 12
+    target-player: true
+    # Fraction of the siege that arrives as jockey "cavalry" (rider on a mount).
+    jockey-fraction: 0.35
+    # Weighted makeup of the non-jockey "infantry". Creeper is deliberately low.
+    composition:
+      zombie: 5
+      husk: 2
+      skeleton: 3
+      stray: 2
+      spider: 2
+      drowned: 1
+      pillager: 2
+      creeper: 1
+  jockeys:
+    # Jockeys are a rider on a mount. Every mount x rider combination is used,
+    # e.g. skeleton/baby-zombie on a spider (spider jockey) or a chicken
+    # (chicken jockey).
+    mounts:
+      - spider
+      - chicken
+    riders:
+      - skeleton
+      - baby_zombie
+    # Also boost natural night jockeys: when a spider/chicken spawns naturally at
+    # night, chance to saddle it with a rider.
+    natural-boost-enabled: true
+    spider-rider-chance: 0.5
+    chicken-rider-chance: 0.3
+  giant:
+    # Once past first-night, a hunting pack may arrive escorted by a giant.
+    # The giant's stats, terrain damage, loot, and despawn come from the
+    # giant-events section, so its terrain damage requires giant-events
+    # block-damage + terrain-damage-enabled (both on by default).
+    enabled: true
+    first-night: 15
+    chance-per-pack: 0.15
+    max-per-world: 1
+    announce: false
+  sounds:
+    enabled: true
+    # Category the sounds play under. MASTER ignores per-category volume sliders
+    # (Ambient, Music, Hostile Creatures, etc.) so they are heard unless the
+    # player has muted their entire game.
+    category: master
+    volume: 0.9
+    pitch-min: 0.6
+    pitch-max: 1.0
+    distance: 8.0
+    min-chance-per-cycle: 0.25
+    max-chance-per-cycle: 0.85
+    # Ramp sound frequency toward midnight and ease off near dawn.
+    night-curve: true
+    # Any vanilla sound id works here; add your own to this list.
+    list:
+      - ambient.cave
+      - entity.warden.heartbeat
+      - entity.warden.nearby_closer
+      - entity.sculk_shrieker.shriek
+      - entity.enderman.stare
+      - entity.ghast.warn
+      - ambient.soul_sand_valley.mood
+      - ambient.basalt_deltas.mood

@@ -5,6 +5,7 @@ import com.deep.civpressure.biome.BiomeGroup;
 import com.deep.civpressure.biome.BiomeGroupRegistry;
 import com.deep.civpressure.config.ConfigManager;
 import com.deep.civpressure.giant.GiantEventManager;
+import com.deep.civpressure.nightfall.NightfallManager;
 import com.deep.civpressure.ore.OreRates;
 import com.deep.civpressure.ore.OreRedistributionResult;
 import com.deep.civpressure.ore.OreRedistributor;
@@ -50,7 +51,8 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             "wetseason",
             "durability",
             "compass",
-            "giant");
+            "giant",
+            "nightfall");
     private static final List<String> ORE_SUBCOMMANDS = List.of(
             "info",
             "chunk",
@@ -71,6 +73,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
     private final OreRedistributor oreRedistributor;
     private final SeasonCommandHandler seasonCommandHandler;
     private final GiantEventManager giantEventManager;
+    private final NightfallManager nightfallManager;
     private final Set<UUID> activeProcessJobs = new HashSet<>();
 
     public CivCommand(CivPressurePlugin plugin, ConfigManager configManager) {
@@ -83,6 +86,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
         oreRedistributor = plugin.getOreRedistributor();
         seasonCommandHandler = new SeasonCommandHandler(plugin.getSeasonManager());
         giantEventManager = plugin.getGiantEventManager();
+        nightfallManager = plugin.getNightfallManager();
     }
 
     @Override
@@ -107,6 +111,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             case "durability" -> handleDurability(sender, args);
             case "compass" -> handleCompass(sender, args);
             case "giant" -> handleGiant(sender, args);
+            case "nightfall" -> handleNightfall(sender, args);
             default -> {
                 sendUsage(sender, label);
                 yield true;
@@ -221,6 +226,40 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.GRAY + "Max extra damage per event: " + ChatColor.WHITE
                 + configManager.getInt("durability-pressure.max-extra-damage-per-event", 4));
         return true;
+    }
+
+    private boolean handleNightfall(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("civ.nightfall")) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to view Nightfall status.");
+            return true;
+        }
+        if (args.length != 2 || !args[1].equalsIgnoreCase("status")) {
+            sender.sendMessage(ChatColor.RED + "Usage: /civ nightfall status");
+            return true;
+        }
+
+        boolean enabled = configManager.isModuleEnabled("nightfall");
+        sender.sendMessage(ChatColor.GOLD + "Nightfall");
+        sender.sendMessage(ChatColor.GRAY + "Module: "
+                + stateColor(enabled) + (enabled ? "enabled" : "disabled"));
+        sender.sendMessage(ChatColor.GRAY + "Danger cap: " + ChatColor.WHITE
+                + nightfallManager.capNights() + " nights");
+        for (World world : plugin.getServer().getWorlds()) {
+            if (world.getEnvironment() != World.Environment.NORMAL) {
+                continue;
+            }
+            long nights = nightfallManager.nightsSurvived(world);
+            int percent = (int) Math.round(nightfallManager.progress(world) * 100.0);
+            sender.sendMessage(ChatColor.GRAY + "- " + world.getName() + ": night "
+                    + ChatColor.WHITE + nights + ChatColor.GRAY + " (" + percent + "% escalated, "
+                    + "mob health x" + round2(nightfallManager.currentHealthMultiplier(world))
+                    + ", damage x" + round2(nightfallManager.currentDamageMultiplier(world)) + ")");
+        }
+        return true;
+    }
+
+    private double round2(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private boolean handleGiant(CommandSender sender, String[] args) {
@@ -790,6 +829,10 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/" + label + " giant"
                     + ChatColor.GRAY + " - Manage rare giant events.");
         }
+        if (sender.hasPermission("civ.nightfall")) {
+            sender.sendMessage(ChatColor.YELLOW + "/" + label + " nightfall status"
+                    + ChatColor.GRAY + " - Show how escalated the nights are.");
+        }
         sender.sendMessage(ChatColor.YELLOW + "/civhelp"
                 + ChatColor.GRAY + " - Show the player help overview.");
     }
@@ -840,6 +883,11 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                 && args[0].equalsIgnoreCase("giant")
                 && sender.hasPermission("civ.giant.admin")) {
             return prefixMatches(List.of("status", "spawn", "clear"), args[1]);
+        }
+        if (args.length == 2
+                && args[0].equalsIgnoreCase("nightfall")
+                && sender.hasPermission("civ.nightfall")) {
+            return prefixMatches(List.of("status"), args[1]);
         }
         if (args.length == 3
                 && args[0].equalsIgnoreCase("giant")
@@ -895,6 +943,9 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                 continue;
             }
             if (subcommand.equals("giant") && !sender.hasPermission("civ.giant.admin")) {
+                continue;
+            }
+            if (subcommand.equals("nightfall") && !sender.hasPermission("civ.nightfall")) {
                 continue;
             }
             if ((subcommand.equals("chunk") || subcommand.equals("radius"))

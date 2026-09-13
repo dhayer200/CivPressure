@@ -73,7 +73,11 @@ public final class GiantEventManager {
         stopTasks();
         loadAllowedGroups();
         loadTerrainProtections();
-        if (!configManager.isModuleEnabled("giant-events")) {
+        boolean giantEvents = configManager.isModuleEnabled("giant-events");
+        // Nightfall can spawn managed giants too, so keep maintaining them (and
+        // their terrain damage) whenever either module is on.
+        boolean nightfall = configManager.isModuleEnabled("nightfall");
+        if (!giantEvents && !nightfall) {
             if (configManager.getBoolean("giant-events.remove-existing-when-disabled", false)) {
                 clearAll();
             }
@@ -81,22 +85,63 @@ public final class GiantEventManager {
         }
 
         configureLoadedGiants();
-        long spawnInterval = Math.max(
-                20L,
-                configManager.getLong("giant-events.spawn-check-interval-ticks", 24000L));
         long maintenanceInterval = Math.max(
                 10L,
                 configManager.getLong("giant-events.maintenance-interval-ticks", 20L));
-        spawnTask = plugin.getServer().getScheduler().runTaskTimer(
-                plugin,
-                this::runSpawnCheck,
-                spawnInterval,
-                spawnInterval);
         maintenanceTask = plugin.getServer().getScheduler().runTaskTimer(
                 plugin,
                 this::maintainGiants,
                 maintenanceInterval,
                 maintenanceInterval);
+        if (giantEvents) {
+            long spawnInterval = Math.max(
+                    20L,
+                    configManager.getLong("giant-events.spawn-check-interval-ticks", 24000L));
+            spawnTask = plugin.getServer().getScheduler().runTaskTimer(
+                    plugin,
+                    this::runSpawnCheck,
+                    spawnInterval,
+                    spawnInterval);
+        }
+    }
+
+    /**
+     * Spawns a managed event giant near a player, used by the Nightfall module
+     * so a giant can arrive alongside a hunting pack. The giant is tagged and
+     * configured like any event giant, so the maintenance loop handles its
+     * pursuit, terrain damage, loot, and despawn.
+     *
+     * @return the spawned giant, or {@code null} if no suitable location was found
+     */
+    public Giant spawnManagedGiantNear(
+            Player player,
+            double minDistance,
+            double maxDistance,
+            boolean announce
+    ) {
+        if (!isAllowedWorld(player.getWorld())) {
+            return null;
+        }
+        double min = Math.max(1.0, minDistance);
+        double max = Math.max(min, maxDistance);
+        Location location = findNearbyGiantLocation(player, min, max);
+        return location == null ? null : spawn(location, announce);
+    }
+
+    private Location findNearbyGiantLocation(Player player, double min, double max) {
+        int attempts = Math.max(8, configManager.getInt("giant-events.location-attempts", 32));
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        for (int attempt = 0; attempt < attempts; attempt++) {
+            double angle = random.nextDouble(Math.PI * 2.0);
+            double distance = random.nextDouble(min, max + 0.01);
+            int x = (int) Math.floor(player.getX() + Math.cos(angle) * distance);
+            int z = (int) Math.floor(player.getZ() + Math.sin(angle) * distance);
+            Location location = findSurface(player.getWorld(), x, z);
+            if (location != null) {
+                return location;
+            }
+        }
+        return null;
     }
 
     public void stop() {
@@ -288,7 +333,8 @@ public final class GiantEventManager {
     }
 
     private void maintainGiants() {
-        if (!configManager.isModuleEnabled("giant-events")) {
+        if (!configManager.isModuleEnabled("giant-events")
+                && !configManager.isModuleEnabled("nightfall")) {
             return;
         }
         for (World world : plugin.getServer().getWorlds()) {

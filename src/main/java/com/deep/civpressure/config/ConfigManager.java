@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.bukkit.configuration.ConfigurationSection;
 
 public final class ConfigManager implements ConfigIntReader {
     private static final String MODULES_PATH = "modules";
@@ -30,17 +31,14 @@ public final class ConfigManager implements ConfigIntReader {
         Map<String, Boolean> states = new LinkedHashMap<>();
         states.put("Ore Redistribution", isModuleEnabled("ore-redistribution"));
         states.put("Seasons", isModuleEnabled("seasons"));
-        states.put("Animal Flee", isModuleEnabled("animal-flee"));
         states.put("Fall Damage", isModuleEnabled("fall-damage"));
         states.put("Slow Regen", isModuleEnabled("slow-regen"));
         states.put("Durability Pressure", isModuleEnabled("durability-pressure"));
-        states.put("Freeze", isModuleEnabled("freeze"));
-        states.put("Wind", isModuleEnabled("wind"));
-        states.put("Drowning", isModuleEnabled("drowning"));
         states.put("Biome Compass", isModuleEnabled("biome-compass"));
         states.put("Mob Buffs", isModuleEnabled("mob-buffs"));
         states.put("Giant Events", isModuleEnabled("giant-events"));
         states.put("Mountain Polar Bears", isModuleEnabled("mountain-polar-bears"));
+        states.put("Nightfall", isModuleEnabled("nightfall"));
         return states;
     }
 
@@ -74,6 +72,19 @@ public final class ConfigManager implements ConfigIntReader {
 
     public List<String> getStringList(String path) {
         return plugin.getConfig().getStringList(path);
+    }
+
+    /** Reads a config section of {@code key: int} pairs (e.g. weighted tables). */
+    public Map<String, Integer> getIntMap(String path) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        ConfigurationSection section = plugin.getConfig().getConfigurationSection(path);
+        if (section == null) {
+            return result;
+        }
+        for (String key : section.getKeys(false)) {
+            result.put(key, section.getInt(key));
+        }
+        return result;
     }
 
     public String getBiomeGroupDisplayName(BiomeGroup group) {
