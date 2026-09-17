@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.deep'
-version = '26.2'
+version = '26.3'
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:26.2.build.+'
+    compileOnly 'io.papermc.paper:paper-api:26.3.build.+'
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -22,7 +22,7 @@ dependencies {
     // Ore/biome domain types reference Bukkit enums (Material), so the API must
     // be on the test runtime classpath too. Tests avoid anything that needs a
     // running server (e.g. the Biome registry).
-    testImplementation 'io.papermc.paper:paper-api:26.2.build.+'
+    testImplementation 'io.papermc.paper:paper-api:26.3.build.+'
 }
 
 java {

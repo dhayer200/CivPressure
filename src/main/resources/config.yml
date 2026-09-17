@@ -388,6 +388,7 @@ biome-compass:
     - dark_oak_sapling
     - cherry_sapling
     - pale_oak_sapling
+    - poplar_sapling
     - mangrove_propagule
   group-slots:
     plains: 10

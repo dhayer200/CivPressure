@@ -4,8 +4,8 @@
 # so you can test in-game with a normal Minecraft client (connect to localhost).
 #
 # Usage:
-#   scripts/run-test-server.sh            # uses Paper for MC 26.2
-#   scripts/run-test-server.sh 26.2       # explicit version
+#   scripts/run-test-server.sh            # uses Paper for MC 26.3
+#   scripts/run-test-server.sh 26.3       # explicit version
 #   MEM=4G scripts/run-test-server.sh     # more RAM
 #
 # Nothing here touches your live Apex server. The server files live in ./run/
@@ -16,11 +16,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-MC_VERSION="${1:-26.2}"
+MC_VERSION="${1:-26.3}"
 RUN_DIR="$ROOT/run"
 MEM="${MEM:-2G}"
+USER_AGENT="CivPressure-test-server/26.3 (https://github.com/dhayer200/CivPressure)"
 
-# --- 1. Find a Java 25 runtime (Paper 26.2 requires it) --------------------
+# --- 1. Find a Java 25 runtime (Paper 26.3 requires it) --------------------
 find_java25() {
   # Prefer a JDK 25 Gradle already provisioned, then common install locations.
   local candidates=()
@@ -59,12 +60,23 @@ mkdir -p "$RUN_DIR/plugins"
 PAPER_JAR="$RUN_DIR/paper-$MC_VERSION.jar"
 if [ ! -f "$PAPER_JAR" ]; then
   echo ">> Fetching latest Paper build for $MC_VERSION ..."
-  API="https://api.papermc.io/v2/projects/paper"
-  BUILD="$(curl -fsSL "$API/versions/$MC_VERSION/builds" \
-    | python3 -c 'import sys,json; b=json.load(sys.stdin)["builds"]; print(b[-1]["build"])')"
-  URL="$API/versions/$MC_VERSION/builds/$BUILD/downloads/paper-$MC_VERSION-$BUILD.jar"
-  echo ">> Downloading build $BUILD ..."
-  curl -fsSL -o "$PAPER_JAR" "$URL"
+  API="https://fill.papermc.io/v3/projects/paper/versions/${MC_VERSION}/builds"
+  URL="$(curl -fsSL -A "$USER_AGENT" "$API" | python3 -c '
+import json, sys
+builds = json.load(sys.stdin)
+if not isinstance(builds, list) or not builds:
+    sys.exit("No Paper builds returned for this version")
+stable = [b for b in builds if b.get("channel") == "STABLE"]
+chosen = stable[0] if stable else builds[0]
+download = (chosen.get("downloads") or {}).get("server:default") or {}
+url = download.get("url")
+if not url:
+    sys.exit("Paper build is missing a server:default download URL")
+print(url)
+print(">> Using Paper " + str(chosen.get("channel", "UNKNOWN")) + " build " + str(chosen.get("id")), file=sys.stderr)
+')"
+  echo ">> Downloading $URL ..."
+  curl -fsSL -A "$USER_AGENT" -o "$PAPER_JAR" "$URL"
 fi
 
 # --- 4. First-run server config (offline mode = no auth hassle) ------------

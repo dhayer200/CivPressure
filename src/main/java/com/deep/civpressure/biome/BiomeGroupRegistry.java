@@ -36,7 +36,8 @@ public final class BiomeGroupRegistry {
                 Biome.FLOWER_FOREST,
                 Biome.FOREST,
                 Biome.BIRCH_FOREST,
-                Biome.OLD_GROWTH_BIRCH_FOREST);
+                Biome.OLD_GROWTH_BIRCH_FOREST,
+                Biome.DAPPLED_FOREST);
 
         register(BiomeGroup.IRON,
                 Biome.TAIGA,

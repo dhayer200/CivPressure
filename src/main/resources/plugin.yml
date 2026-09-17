@@ -1,7 +1,7 @@
 name: CivPressure
-version: '26.2'
+version: '26.3'
 main: com.deep.civpressure.CivPressurePlugin
-api-version: '26.2'
+api-version: '26.3'
 description: Biome-based civilization pressure for Paper.
 
 commands:

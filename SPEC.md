@@ -5,8 +5,8 @@ Send Codex this. It’s written to force it to build from scratch, prove basics 
 Build a brand-new Minecraft Paper plugin from scratch.
 
 Plugin name: CivPressure
-Plugin version: 26.2
-Minecraft/Paper target version: 26.2
+Plugin version: 26.3
+Minecraft/Paper target version: 26.3
 Java: 25
 Build tool: Gradle
 Main package: com.deep.civpressure
@@ -14,8 +14,8 @@ Main package: com.deep.civpressure
 Use the Paper Maven repository:
 https://repo.papermc.io/repository/maven-public/
 
-Use the Paper 26.2 API dependency:
-io.papermc.paper:paper-api:26.2.build.+
+Use the Paper 26.3 API dependency:
+io.papermc.paper:paper-api:26.3.build.+
 
 Configure the Gradle Java toolchain for Java 25.
 
@@ -58,8 +58,8 @@ Use standard plugin.yml, not only paper-plugin.yml, because command registration
 
 plugin.yml must include:
 
-* version: '26.2'
-* api-version: '26.2'
+* version: '26.3'
+* api-version: '26.3'
 
 plugin.yml must declare:
 
@@ -153,6 +153,7 @@ Plains:
 * forest
 * birch_forest
 * old_growth_birch_forest
+* dappled_forest
 
 Iron:
 
@@ -321,7 +322,7 @@ Requirements:
 * Keep extra ore generation natural-looking; do not create artificial cubes.
 
 Important:
-Use the correct Paper 26.2 event/hook for post-generation chunk processing. Verify the API. If ChunkPopulateEvent is unavailable or deprecated, use the correct modern Paper equivalent. The ore processor must run after vanilla ores generate.
+Use the correct Paper 26.3 event/hook for post-generation chunk processing. Verify the API. If ChunkPopulateEvent is unavailable or deprecated, use the correct modern Paper equivalent. The ore processor must run after vanilla ores generate.
 
 Add commands:
 
@@ -481,7 +482,7 @@ Rules:
 * Hostile damage remains vanilla. Do NOT increase hostile damage.
 * In frozen/snowy biomes, skeletons spawn as strays if configured.
 * Mark buffed mobs with PersistentDataContainer so they are not multiplied repeatedly.
-* Verify correct Paper 26.2 Attribute enum names before coding.
+* Verify correct Paper 26.3 Attribute enum names before coding.
 
 PHASE 8 — BIOME COMPASS
 

@@ -6,7 +6,7 @@ settlement, migration, trade, cooperation, and conflict.
 
 ## Requirements
 
-- Minecraft/Paper 26.2
+- Minecraft/Paper 26.3
 - Java 25
 - Gradle wrapper included
 
@@ -122,7 +122,7 @@ configuration section.
 ## Biome Groups
 
 - Plains: plains, sunflower plains, meadow, cherry grove, flower forest,
-  forest, birch forest, old-growth birch forest.
+  forest, birch forest, old-growth birch forest, dappled forest.
 - Iron: taiga, snowy taiga, old-growth pine/spruce taiga, savanna, savanna
   plateau, windswept savanna.
 - Gold: desert and all badlands variants.
