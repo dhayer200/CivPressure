@@ -28,6 +28,7 @@ permissions:
       civ.compass.give: true
       civ.giant.admin: true
       civ.nightfall: true
+      civ.nightfall.admin: true
   civ.reload:
     description: Allows reloading the CivPressure configuration.
     default: op
@@ -54,6 +55,9 @@ permissions:
     default: op
   civ.nightfall:
     description: Allows viewing Nightfall escalation status.
+    default: op
+  civ.nightfall.admin:
+    description: Allows resetting or setting the Nightfall escalation day.
     default: op
   civ.help:
     description: Allows use of CivPressure help and status commands.

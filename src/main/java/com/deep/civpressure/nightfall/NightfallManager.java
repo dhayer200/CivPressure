@@ -3,6 +3,8 @@ package com.deep.civpressure.nightfall;
 import com.deep.civpressure.CivPressurePlugin;
 import com.deep.civpressure.config.ConfigManager;
 import com.deep.civpressure.giant.GiantEventManager;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.logging.Level;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.HeightMap;
@@ -29,6 +32,8 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Spider;
 import org.bukkit.entity.Zombie;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -42,9 +47,9 @@ import org.bukkit.scheduler.BukkitTask;
  * the running server.
  */
 public final class NightfallManager {
-    private static final long TICKS_PER_DAY = 24000L;
     private static final long NIGHT_START = 13000L;
     private static final long NIGHT_END = 23000L;
+    private static final String STATE_FILE_NAME = "nightfall.dat";
 
     private final CivPressurePlugin plugin;
     private final ConfigManager configManager;
@@ -60,9 +65,12 @@ public final class NightfallManager {
     private List<JockeyRider> jockeyRiders = List.of();
     private List<String> sounds = List.of();
     private SoundCategory soundCategory = SoundCategory.MASTER;
-    // Tracks the last world-day a guaranteed siege ran for each player, so each
-    // night produces exactly one siege per player.
+    // Tracks the last calendar day a guaranteed siege ran for each player, so
+    // each real night produces exactly one siege even if the Nightfall clock
+    // is reset mid-night.
     private final Map<UUID, Long> lastSiegeDay = new HashMap<>();
+    private final Map<UUID, Long> clockOffsets = new HashMap<>();
+    private final File stateFile;
 
     public NightfallManager(
             CivPressurePlugin plugin,
@@ -76,14 +84,17 @@ public final class NightfallManager {
         healthModifierKey = new NamespacedKey(plugin, "nightfall_health");
         damageModifierKey = new NamespacedKey(plugin, "nightfall_damage");
         speedModifierKey = new NamespacedKey(plugin, "nightfall_speed");
+        stateFile = new File(plugin.getDataFolder(), STATE_FILE_NAME);
     }
 
     public void start() {
+        loadClock();
         reload();
     }
 
     public void stop() {
         cancelTask();
+        saveClock();
     }
 
     public void reload() {
@@ -103,9 +114,37 @@ public final class NightfallManager {
         return configManager.isModuleEnabled("nightfall");
     }
 
-    /** Days survived in the world (its age), used as the escalation clock. */
+    /** Calendar days the world has existed (ignores the Nightfall offset). */
+    public long worldDays(World world) {
+        return NightfallEscalation.worldDays(world.getFullTime());
+    }
+
+    /**
+     * Nightfall escalation day in this world. Admins can reset or jump this
+     * without changing the world's actual age.
+     */
     public long nightsSurvived(World world) {
-        return Math.floorDiv(world.getFullTime(), TICKS_PER_DAY);
+        return NightfallEscalation.nightsSurvived(worldDays(world), clockOffset(world));
+    }
+
+    public long clockOffset(World world) {
+        return clockOffsets.getOrDefault(world.getUID(), 0L);
+    }
+
+    /** Sets Nightfall to day 0 in {@code world}. The Minecraft calendar is unchanged. */
+    public long resetNight(World world) {
+        return setNight(world, 0L);
+    }
+
+    /**
+     * Sets Nightfall to {@code targetNight} ({@code >= 0}) in {@code world}.
+     * Returns the effective night after clamping.
+     */
+    public long setNight(World world, long targetNight) {
+        long night = Math.max(0L, targetNight);
+        clockOffsets.put(world.getUID(), NightfallEscalation.clockOffsetFor(worldDays(world), night));
+        saveClock();
+        return night;
     }
 
     public int capNights() {
@@ -282,7 +321,7 @@ public final class NightfallManager {
         if (!configManager.getBoolean("nightfall.spawns.enabled", true)) {
             return;
         }
-        long day = nightsSurvived(world);
+        long day = worldDays(world);
         Long last = lastSiegeDay.get(player.getUniqueId());
         if (last != null && last == day) {
             return;
@@ -688,6 +727,44 @@ public final class NightfallManager {
     }
 
     private record JockeyRider(EntityType type, boolean baby) {
+    }
+
+    private void loadClock() {
+        clockOffsets.clear();
+        if (!stateFile.exists()) {
+            return;
+        }
+        YamlConfiguration data = YamlConfiguration.loadConfiguration(stateFile);
+        ConfigurationSection worlds = data.getConfigurationSection("worlds");
+        if (worlds == null) {
+            return;
+        }
+        for (String key : worlds.getKeys(false)) {
+            try {
+                UUID worldId = UUID.fromString(key);
+                long offset = worlds.getLong(key + ".offset", worlds.getLong(key, 0L));
+                clockOffsets.put(worldId, offset);
+            } catch (IllegalArgumentException exception) {
+                plugin.getLogger().warning("Ignoring malformed Nightfall clock entry: " + key);
+            }
+        }
+    }
+
+    private void saveClock() {
+        YamlConfiguration data = new YamlConfiguration();
+        for (Map.Entry<UUID, Long> entry : clockOffsets.entrySet()) {
+            String path = "worlds." + entry.getKey();
+            data.set(path + ".offset", entry.getValue());
+            World world = plugin.getServer().getWorld(entry.getKey());
+            if (world != null) {
+                data.set(path + ".name", world.getName());
+            }
+        }
+        try {
+            data.save(stateFile);
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save " + STATE_FILE_NAME, exception);
+        }
     }
 
     private SoundCategory parseSoundCategory(String value) {

@@ -12,8 +12,31 @@ public final class NightfallEscalation {
     private static final long DUSK = 13000L;
     private static final long MIDNIGHT = 18000L;
     private static final long DAWN = 23000L;
+    static final long TICKS_PER_DAY = 24000L;
 
     private NightfallEscalation() {
+    }
+
+    /** Minecraft calendar day from {@code World#getFullTime()}, always {@code >= 0}. */
+    public static long worldDays(long fullTime) {
+        return Math.floorDiv(Math.max(0L, fullTime), TICKS_PER_DAY);
+    }
+
+    /**
+     * Nightfall escalation day after applying a persisted clock offset. The
+     * offset is {@code worldDays - desiredNight}, so admins can reset or jump
+     * the danger clock without rewriting the world's actual age.
+     */
+    public static long nightsSurvived(long worldDays, long clockOffset) {
+        return Math.max(0L, worldDays - clockOffset);
+    }
+
+    /**
+     * Offset that makes {@link #nightsSurvived(long, long)} report
+     * {@code targetNight} (clamped to {@code >= 0}) on the given world day.
+     */
+    public static long clockOffsetFor(long worldDays, long targetNight) {
+        return worldDays - Math.max(0L, targetNight);
     }
 
     /**

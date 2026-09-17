@@ -124,17 +124,9 @@ ore-redistribution:
 enabled: true
 seasons:
 enabled: true
-animal-flee:
-enabled: true
 fall-damage:
 enabled: true
 slow-regen:
-enabled: true
-freeze:
-enabled: true
-wind:
-enabled: true
-drowning:
 enabled: true
 biome-compass:
 enabled: true
@@ -408,32 +400,12 @@ PHASE 6 — SURVIVAL HAZARDS
 
 Implement these modules, all toggleable and configurable.
 
-1. Animal flee
-
-* Passive animals flee from non-sneaking players.
-* Default radius: 8 blocks.
-* Sneaking players do not trigger flee.
-* Leashed/ridden animals do not flee.
-* Use nearby-entity scans around players, not full-world entity scans.
-
-Affected animals:
-
-* chicken
-* cow
-* mooshroom
-* pig
-* sheep
-* rabbit
-* horse
-* donkey
-* llama
-
-2. Fall damage
+1. Fall damage
 
 * 1.5x vanilla fall damage.
 * Only modify actual fall damage events.
 
-3. Slow regen + sleep regen
+2. Slow regen + sleep regen
 
 * Natural health regeneration is 4x slower.
 * Implement by throttling SATIATED EntityRegainHealthEvent.
@@ -441,33 +413,6 @@ Affected animals:
 * Sleeping grants Regeneration I for 2 minutes.
 * Apply on successful wake from bed.
 * Do not stack into higher amplifier.
-
-4. Freeze in cold biomes
-
-* Players freeze in cold/frozen/mountain biomes when lacking light.
-* Safe if holding torch, soul torch, lantern, or soul lantern in main hand OR offhand.
-* Safe if block light is at least 8.
-* Sunlight alone should not count.
-* Full leather armor protects by default; configurable.
-* Use vanilla freeze ticks if possible.
-* Gradual freeze, not instant damage.
-
-5. Wind
-
-* High-altitude wind in mountain/cold biomes.
-* Applies above Y=150.
-* Strength increases with height, peaking around Y=256.
-* Sneaking reduces push by 70%.
-* Telegraph gust with sound/particles around 15 ticks before push.
-* Wind can push players off cliffs; intended.
-
-6. Faster drowning
-
-* Implement as scheduled task, not PlayerMoveEvent.
-* Submerged players lose air faster.
-* Respect Water Breathing.
-* Respect Respiration if practical by reducing extra drain.
-* Do not instantly kill players.
 
 PHASE 7 — MOB BUFFS
 
@@ -546,11 +491,6 @@ wet-bonus-chance-cold: 0.60
 farmland-check-radius: 8
 farmland-check-interval-ticks: 100
 
-animal-flee:
-radius: 8.0
-speed: 0.35
-interval-ticks: 10
-
 fall-damage:
 multiplier: 1.5
 
@@ -558,23 +498,6 @@ slow-regen:
 slow-factor: 4
 sleep-regen-duration-ticks: 2400
 sleep-regen-amplifier: 0
-
-freeze:
-light-threshold: 8
-leather-protects: true
-freeze-ticks-per-second: 35
-
-wind:
-min-y: 150
-peak-y: 256
-max-strength: 1.2
-sneak-reduce: 0.70
-gust-interval-ticks: 100
-telegraph-ticks: 15
-
-drowning:
-air-drain-multiplier: 2.0
-interval-ticks: 20
 
 biome-compass:
 search-radius: 6000
@@ -637,11 +560,7 @@ Final acceptance checklist:
 * Biome compass recipe works.
 * Biome compass GUI opens.
 * Mob health buffs apply once.
-* Freeze works in cold biomes.
-* Wind works above Y=150.
-* Animal flee works.
 * Fall damage multiplier works.
-* Drowning drains faster.
 * No random spawn exists.
 * No harder mining exists.
 * Lush caves are Ungrouped, not Redstone.

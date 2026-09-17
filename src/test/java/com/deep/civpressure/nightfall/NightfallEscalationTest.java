@@ -90,6 +90,40 @@ class NightfallEscalationTest {
     }
 
     @Test
+    void worldDaysAreFullTimeDividedByAMinecraftDay() {
+        assertEquals(0L, NightfallEscalation.worldDays(0L));
+        assertEquals(0L, NightfallEscalation.worldDays(23999L));
+        assertEquals(1L, NightfallEscalation.worldDays(24000L));
+        assertEquals(30L, NightfallEscalation.worldDays(30L * 24000L + 18000L));
+    }
+
+    @Test
+    void nightsSurvivedSubtractsClockOffsetAndNeverGoesNegative() {
+        assertEquals(30L, NightfallEscalation.nightsSurvived(30L, 0L));
+        assertEquals(0L, NightfallEscalation.nightsSurvived(30L, 30L));
+        assertEquals(15L, NightfallEscalation.nightsSurvived(30L, 15L));
+        assertEquals(40L, NightfallEscalation.nightsSurvived(10L, -30L));
+        assertEquals(0L, NightfallEscalation.nightsSurvived(5L, 20L));
+    }
+
+    @Test
+    void clockOffsetMapsAWorldDayOntoAnyRequestedNightfallDay() {
+        assertEquals(30L, NightfallEscalation.clockOffsetFor(30L, 0L));
+        assertEquals(15L, NightfallEscalation.clockOffsetFor(30L, 15L));
+        assertEquals(-30L, NightfallEscalation.clockOffsetFor(10L, 40L));
+        assertEquals(10L, NightfallEscalation.clockOffsetFor(10L, -5L));
+    }
+
+    @Test
+    void settingThenReadingNightfallDayRoundTrips() {
+        long worldDays = 22L;
+        for (long target : new long[] {0L, 1L, 15L, 50L, 99L}) {
+            long offset = NightfallEscalation.clockOffsetFor(worldDays, target);
+            assertEquals(Math.max(0L, target), NightfallEscalation.nightsSurvived(worldDays, offset));
+        }
+    }
+
+    @Test
     void nightCurvePeaksAtMidnightAndIsZeroOutsideNight() {
         assertEquals(1.0, NightfallEscalation.nightCurve(18000L), 1.0e-9);
         assertEquals(0.0, NightfallEscalation.nightCurve(13000L), 1.0e-9);

@@ -229,15 +229,38 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleNightfall(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("civ.nightfall")) {
-            sender.sendMessage(ChatColor.RED + "You do not have permission to view Nightfall status.");
-            return true;
-        }
-        if (args.length != 2 || !args[1].equalsIgnoreCase("status")) {
-            sender.sendMessage(ChatColor.RED + "Usage: /civ nightfall status");
+        if (args.length < 2) {
+            sendNightfallUsage(sender);
             return true;
         }
 
+        return switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "status" -> showNightfallStatus(sender);
+            case "reset" -> setNightfallDay(sender, args, 0L, true);
+            case "set" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /civ nightfall set <day> [world|all]");
+                    yield true;
+                }
+                Long day = parseNightfallDay(args[2]);
+                if (day == null) {
+                    sender.sendMessage(ChatColor.RED + "Nightfall day must be a whole number of 0 or more.");
+                    yield true;
+                }
+                yield setNightfallDay(sender, args, day, false);
+            }
+            default -> {
+                sendNightfallUsage(sender);
+                yield true;
+            }
+        };
+    }
+
+    private boolean showNightfallStatus(CommandSender sender) {
+        if (!sender.hasPermission("civ.nightfall") && !sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to view Nightfall status.");
+            return true;
+        }
         boolean enabled = configManager.isModuleEnabled("nightfall");
         sender.sendMessage(ChatColor.GOLD + "Nightfall");
         sender.sendMessage(ChatColor.GRAY + "Module: "
@@ -256,6 +279,84 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                     + ", damage x" + round2(nightfallManager.currentDamageMultiplier(world)) + ")");
         }
         return true;
+    }
+
+    private boolean setNightfallDay(CommandSender sender, String[] args, long day, boolean reset) {
+        if (!sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to change the Nightfall clock.");
+            return true;
+        }
+
+        List<World> worlds = resolveNightfallWorlds(sender, args, reset ? 2 : 3);
+        if (worlds == null) {
+            return true;
+        }
+        for (World world : worlds) {
+            long applied = reset ? nightfallManager.resetNight(world) : nightfallManager.setNight(world, day);
+            sender.sendMessage(ChatColor.GREEN + "Nightfall in " + world.getName()
+                    + " is now day " + applied + ".");
+        }
+        return true;
+    }
+
+    private @Nullable List<World> resolveNightfallWorlds(CommandSender sender, String[] args, int worldArgIndex) {
+        if (args.length > worldArgIndex && args[worldArgIndex].equalsIgnoreCase("all")) {
+            List<World> worlds = new ArrayList<>();
+            for (World world : plugin.getServer().getWorlds()) {
+                if (world.getEnvironment() == World.Environment.NORMAL) {
+                    worlds.add(world);
+                }
+            }
+            if (worlds.isEmpty()) {
+                sender.sendMessage(ChatColor.RED + "No overworlds are loaded.");
+                return null;
+            }
+            return worlds;
+        }
+
+        World world;
+        if (args.length > worldArgIndex) {
+            world = plugin.getServer().getWorld(args[worldArgIndex]);
+            if (world == null) {
+                sender.sendMessage(ChatColor.RED + "Unknown loaded world: " + args[worldArgIndex]);
+                return null;
+            }
+        } else if (sender instanceof Player player) {
+            world = player.getWorld();
+        } else {
+            sender.sendMessage(ChatColor.RED + "Specify a world or 'all' from the console.");
+            return null;
+        }
+        return List.of(world);
+    }
+
+    private @Nullable Long parseNightfallDay(String raw) {
+        try {
+            long day = Long.parseLong(raw);
+            if (day < 0L) {
+                return null;
+            }
+            return day;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void sendNightfallUsage(CommandSender sender) {
+        sender.sendMessage(ChatColor.GOLD + "CivPressure nightfall commands:");
+        if (sender.hasPermission("civ.nightfall") || sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.YELLOW + "/civ nightfall status"
+                    + ChatColor.GRAY + " - Show how escalated the nights are.");
+        }
+        if (sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.YELLOW + "/civ nightfall reset [world|all]"
+                    + ChatColor.GRAY + " - Restart Nightfall at day 0.");
+            sender.sendMessage(ChatColor.YELLOW + "/civ nightfall set <day> [world|all]"
+                    + ChatColor.GRAY + " - Jump Nightfall to any day.");
+        }
+        if (!sender.hasPermission("civ.nightfall") && !sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to use Nightfall commands.");
+        }
     }
 
     private double round2(double value) {
@@ -829,9 +930,15 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/" + label + " giant"
                     + ChatColor.GRAY + " - Manage rare giant events.");
         }
-        if (sender.hasPermission("civ.nightfall")) {
+        if (sender.hasPermission("civ.nightfall") || sender.hasPermission("civ.nightfall.admin")) {
             sender.sendMessage(ChatColor.YELLOW + "/" + label + " nightfall status"
                     + ChatColor.GRAY + " - Show how escalated the nights are.");
+        }
+        if (sender.hasPermission("civ.nightfall.admin")) {
+            sender.sendMessage(ChatColor.YELLOW + "/" + label + " nightfall reset [world|all]"
+                    + ChatColor.GRAY + " - Restart Nightfall at day 0.");
+            sender.sendMessage(ChatColor.YELLOW + "/" + label + " nightfall set <day> [world|all]"
+                    + ChatColor.GRAY + " - Jump Nightfall to any day.");
         }
         sender.sendMessage(ChatColor.YELLOW + "/civhelp"
                 + ChatColor.GRAY + " - Show the player help overview.");
@@ -884,10 +991,34 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                 && sender.hasPermission("civ.giant.admin")) {
             return prefixMatches(List.of("status", "spawn", "clear"), args[1]);
         }
-        if (args.length == 2
+        if (args.length == 2 && args[0].equalsIgnoreCase("nightfall")) {
+            List<String> options = new ArrayList<>();
+            if (sender.hasPermission("civ.nightfall") || sender.hasPermission("civ.nightfall.admin")) {
+                options.add("status");
+            }
+            if (sender.hasPermission("civ.nightfall.admin")) {
+                options.add("reset");
+                options.add("set");
+            }
+            return prefixMatches(options, args[1]);
+        }
+        if (args.length == 3
                 && args[0].equalsIgnoreCase("nightfall")
-                && sender.hasPermission("civ.nightfall")) {
-            return prefixMatches(List.of("status"), args[1]);
+                && args[1].equalsIgnoreCase("set")
+                && sender.hasPermission("civ.nightfall.admin")) {
+            return prefixMatches(List.of("0", "15", "25", "50"), args[2]);
+        }
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("nightfall")
+                && args[1].equalsIgnoreCase("reset")
+                && sender.hasPermission("civ.nightfall.admin")) {
+            return prefixMatches(nightfallWorldCompletions(), args[2]);
+        }
+        if (args.length == 4
+                && args[0].equalsIgnoreCase("nightfall")
+                && args[1].equalsIgnoreCase("set")
+                && sender.hasPermission("civ.nightfall.admin")) {
+            return prefixMatches(nightfallWorldCompletions(), args[3]);
         }
         if (args.length == 3
                 && args[0].equalsIgnoreCase("giant")
@@ -945,7 +1076,9 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             if (subcommand.equals("giant") && !sender.hasPermission("civ.giant.admin")) {
                 continue;
             }
-            if (subcommand.equals("nightfall") && !sender.hasPermission("civ.nightfall")) {
+            if (subcommand.equals("nightfall")
+                    && !sender.hasPermission("civ.nightfall")
+                    && !sender.hasPermission("civ.nightfall.admin")) {
                 continue;
             }
             if ((subcommand.equals("chunk") || subcommand.equals("radius"))
@@ -960,6 +1093,15 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             }
         }
         return completions;
+    }
+
+    private List<String> nightfallWorldCompletions() {
+        List<String> worlds = new ArrayList<>();
+        worlds.add("all");
+        for (World world : plugin.getServer().getWorlds()) {
+            worlds.add(world.getName());
+        }
+        return worlds;
     }
 
     private List<String> prefixMatches(List<String> options, String input) {

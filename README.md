@@ -36,17 +36,13 @@ values are retained.
   persistent processed-chunk records, and bounded radius jobs.
 - Seasons: independent drought, wet, and normal states for every biome group,
   crop effects, farmland moisture, broadcasts, and persisted state.
-- Animal flee: configured passive animals move away from non-sneaking players.
 - Fall damage: configurable multiplier applied only to fall damage events.
 - Slow regeneration: throttled satiated regeneration and successful-sleep
   regeneration.
 - Durability pressure: category-based item wear multipliers for tools, weapons,
   armor, shields, bows/crossbows, and utility items.
-- Freeze: vanilla freeze ticks in configured cold biomes with light, held-item,
-  armor, game-mode, and world protections.
-- Wind: telegraphed high-altitude gusts in configured mountain biomes.
-- Drowning: scheduled additional air drain with Water Breathing and Respiration
-  support.
+- Biome compass: craftable compass (Nature's Compass-style recipe: a compass
+  surrounded by 8 saplings) that points to the nearest chosen biome group.
 - Mob buffs: configurable health multipliers for all Paper `Enemy` mobs and
   all remaining `Mob` entities, separate iron-golem settings, golem knockback
   resistance, and cold-biome skeleton-to-stray conversion.
@@ -57,9 +53,11 @@ values are retained.
   bear spawns alongside natural passive spawns.
 - Nightfall: behind-the-scenes escalation where each night is more dangerous
   than the last (scaling with the world's age up to a configurable cap, default
-  50 nights). Night hostiles start +15% on the first night and ramp to their
-  caps (default +150% health, +50% damage) by the cap; only zombies (and zombie
-  variants) also gain speed. Hunting packs spawn near players, and atmospheric
+  50 nights). Night hostiles start at vanilla on night 1 and ramp to their caps
+  (default +150% health, +50% damage) by the cap; only zombies (and zombie
+  variants) also gain speed (up to +15%). A diversified siege is guaranteed near
+  each player every night (scaling from 6 to 12 mobs, always at least one
+  jockey), and natural night spawns are boosted by +25%. Atmospheric
   sounds play under the MASTER sound category so they ignore per-category volume
   sliders. Add your own sound IDs to the configured list. Every night zombie is
   also made a door-breaker (needs Hard difficulty + mobGriefing to actually
@@ -102,6 +100,8 @@ configuration section.
 | `/civ giant spawn` | Spawn a test event giant nearby. |
 | `/civ giant clear [world\|all]` | Remove loaded event giants. |
 | `/civ nightfall status` | Show current night, escalation percent, and mob multipliers. |
+| `/civ nightfall reset [world\|all]` | Restart Nightfall at day 0 (admin). Does not rewind the world calendar. |
+| `/civ nightfall set <day> [world\|all]` | Jump Nightfall to any day (admin). |
 
 ## Permissions
 
@@ -117,6 +117,7 @@ configuration section.
 | `civ.compass.give` | op |
 | `civ.giant.admin` | op |
 | `civ.nightfall` | op |
+| `civ.nightfall.admin` | op |
 | `civ.help` | true |
 
 ## Biome Groups
