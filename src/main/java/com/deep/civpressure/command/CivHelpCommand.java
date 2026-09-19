@@ -43,15 +43,13 @@ public final class CivHelpCommand implements CommandExecutor {
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.YELLOW + "Nightfall: " + ChatColor.GRAY
-                + "every night is a little more dangerous than the last.");
+                + "the first night is vanilla. Over many days, nights get harder.");
         sender.sendMessage(ChatColor.GRAY
-                + "As your world ages, hostile mobs grow stronger and more numerous, hunting");
+                + "More spider jockeys, more hostiles, and sieges on beds and villages get more");
         sender.sendMessage(ChatColor.GRAY
-                + "packs stalk players after dark, and zombies can smash through wooden doors.");
+                + "likely. After day 100, phantoms can appear and a giant may join a siege.");
         sender.sendMessage(ChatColor.GRAY
-                + "It peaks around day 50. Build real defenses, light up your base, and don't");
-        sender.sendMessage(ChatColor.GRAY
-                + "sleep through every night alone \u2014 there is safety in numbers.");
+                + "It peaks around day 200. Light settlements, sleep carefully, stay together.");
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.YELLOW + "Seasons: " + ChatColor.GRAY
@@ -60,12 +58,6 @@ public final class CivHelpCommand implements CommandExecutor {
                 + "Droughts dry out farmland and slow crops; wet spells help them. Stockpile food.");
         sender.sendMessage(ChatColor.AQUA + "  Tip: " + ChatColor.GRAY + "check it with "
                 + ChatColor.WHITE + "/civ season status" + ChatColor.GRAY + ".");
-        sender.sendMessage("");
-
-        sender.sendMessage(ChatColor.YELLOW + "Giants: " + ChatColor.GRAY
-                + "rare, dangerous roaming bosses \u2014 not normal mobs.");
-        sender.sendMessage(ChatColor.GRAY
-                + "They hit hard, wreck terrain, and carry good loot. Bring friends; fight or flee.");
         sender.sendMessage("");
 
         sender.sendMessage(ChatColor.YELLOW + "Tougher survival: " + ChatColor.GRAY

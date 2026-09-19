@@ -2,7 +2,7 @@ modules:
   ore-redistribution:
     enabled: true
   seasons:
-    enabled: true
+    enabled: false
   fall-damage:
     enabled: true
   slow-regen:
@@ -10,14 +10,16 @@ modules:
   durability-pressure:
     enabled: true
   biome-compass:
-    enabled: true
+    enabled: false
   mob-buffs:
-    enabled: true
-  giant-events:
     enabled: true
   mountain-polar-bears:
     enabled: true
   nightfall:
+    enabled: true
+  # Extra trapped skeleton-horse hordes on storm lightning. Chance scales
+  # linearly with Nightfall days (0% night 1 → max-chance at the cap).
+  skeleton-traps:
     enabled: true
 
 biome-groups:
@@ -204,8 +206,8 @@ mob-buffs:
   # Nightfall owns ALL hostile strength (health/damage/speed), so keep this at
   # 1.0 to avoid double-buffing hostiles. Passive + golem buffs stay high here.
   hostile-health-multiplier: 1.0
-  passive-health-multiplier: 1.75
-  golem-health-multiplier: 2.0
+  passive-health-multiplier: 1.5
+  golem-health-multiplier: 1.0
   golem-knockback-resistance: 1.0
   heal-newly-buffed-spawns: true
   # Off so mob-buffs stays purely passive/golem; Nightfall handles all hostiles.
@@ -259,8 +261,8 @@ giant-events:
   announcement-message: A giant has been sighted in the {direction} wilderness...
   block-damage: true
   terrain-damage-enabled: true
-  # Explosive: every maintenance tick it blasts a TNT-sized crater wherever it
-  # walks. Containers and the protected-materials list below are always spared.
+  # TNT-sized craters while walking. Only unbreakable/world-anchor blocks are
+  # skipped — chests and player builds are not spared.
   terrain-damage-chance: 1.0
   terrain-damage-radius: 4
   terrain-damage-blocks-per-tick: 200
@@ -275,27 +277,6 @@ giant-events:
     - jigsaw
     - end_portal
     - end_portal_frame
-    - reinforced_deepslate
-    - chest
-    - trapped_chest
-    - barrel
-    - shulker_box
-    - white_shulker_box
-    - orange_shulker_box
-    - magenta_shulker_box
-    - light_blue_shulker_box
-    - yellow_shulker_box
-    - lime_shulker_box
-    - pink_shulker_box
-    - gray_shulker_box
-    - light_gray_shulker_box
-    - cyan_shulker_box
-    - purple_shulker_box
-    - blue_shulker_box
-    - brown_shulker_box
-    - green_shulker_box
-    - red_shulker_box
-    - black_shulker_box
   allowed-biome-groups:
     - plains
     - iron
@@ -411,34 +392,25 @@ biome-compass:
 
 nightfall:
   overworld-only: true
-  # Nights get more dangerous with the world's age (in days) until this cap.
-  cap-nights: 50
-  # How often the module checks each player for sounds and pack spawns (ticks).
+  # Linear escalation clock. Night 1 is vanilla; everything ramps to this day.
+  cap-nights: 200
   tick-interval-ticks: 200
+  sleep:
+    # Vanilla monster-near-bed check is 8x5x8. 1.2 = slightly harder to sleep.
+    monster-radius-multiplier: 1.2
   mob-strength:
-    # Also strengthen normal hostiles that spawn at night, not just night packs.
     affect-natural-spawns: true
-    # Strip escalation buffs from loaded mobs when the module is turned off.
     restore-when-disabled: true
-    # Bonus applied on the very first night (health and damage; speed is excluded).
-    # 0.0 means night 1 hostiles are fully vanilla; the buff ramps up from there.
     first-night-bonus: 0.0
-    # Bonuses reached at the cap (day cap-nights).
-    max-health-bonus: 1.5
-    max-damage-bonus: 0.5
-    # Speed only applies to zombies (and zombie variants); all other mobs keep
-    # vanilla speed. Ramps from 0 on the first night to this bonus at the cap.
+    # Added on top of vanilla: 0.5 = +50% health (x1.5) at the cap.
+    max-health-bonus: 0.5
+    max-damage-bonus: 0.25
     max-speed-bonus: 0.15
-    # Make every night zombie able to break wooden/copper doors (vanilla only
-    # gives ~10% of zombies this). NOTE: actual breaking still needs the world on
-    # Hard difficulty with the mobGriefing gamerule true. Iron doors are immune.
     zombies-break-doors: true
   spawn-rate:
-    # Increase the effective night spawn rate: chance to spawn one extra hostile
-    # next to each natural night spawn. 0.25 = +25%. Values above 1 add more than
-    # one (e.g. 1.5 = one guaranteed extra plus a 50% chance of a second).
+    # Extra natural hostiles. 0% on night 1, this value at the cap (0.5 = +50%).
     enabled: true
-    bonus: 0.25
+    bonus: 0.5
   spawns:
     enabled: true
     min-distance: 16.0
@@ -446,49 +418,51 @@ nightfall:
     location-attempts: 12
     nearby-radius: 48.0
     max-nearby-per-player: 24
-    # A diversified siege is GUARANTEED near each player once per night (unlike
-    # vanilla zombie sieges, which are only a nightly chance). Its size scales
-    # from min (night 1) to max (cap). At least one jockey is always included.
-    min-pack-size: 6
-    max-pack-size: 12
+    village-radius: 96
+    # Beds and villages. Chance-based (not guaranteed, not around lone players).
+    siege-chance-min: 0.05
+    siege-chance-max: 0.50
+    # Linear pack size: 12 on night 1, 24 (2x) at the cap.
+    min-pack-size: 12
+    max-pack-size: 24
+    min-jockeys: 1
+    max-jockeys: 2
     target-player: true
-    # Fraction of the siege that arrives as jockey "cavalry" (rider on a mount).
-    jockey-fraction: 0.35
-    # Weighted makeup of the non-jockey "infantry". Creeper is deliberately low.
     composition:
-      zombie: 5
-      husk: 2
-      skeleton: 3
+      zombie: 8
+      zombie_villager: 3
+      skeleton: 4
       stray: 2
-      spider: 2
-      drowned: 1
-      pillager: 2
-      creeper: 1
+      husk: 2
   jockeys:
-    # Jockeys are a rider on a mount. Every mount x rider combination is used,
-    # e.g. skeleton/baby-zombie on a spider (spider jockey) or a chicken
-    # (chicken jockey).
     mounts:
       - spider
-      - chicken
+    # Weighted. Skeletons are the main riders; baby_zombie is 1.25x a base slot.
     riders:
-      - skeleton
-      - baby_zombie
-    # Also boost natural night jockeys: when a spider/chicken spawns naturally at
-    # night, chance to saddle it with a rider.
+      skeleton: 16
+      stray: 4
+      husk: 2
+      baby_zombie: 5
     natural-boost-enabled: true
-    spider-rider-chance: 0.5
-    chicken-rider-chance: 0.3
+    spider-rider-chance-min: 0.01
+    spider-rider-chance: 0.35
+  skeleton-traps:
+    min-chance: 0.0
+    max-chance: 0.25
   giant:
-    # Once past first-night, a hunting pack may arrive escorted by a giant.
-    # The giant's stats, terrain damage, loot, and despawn come from the
-    # giant-events section, so its terrain damage requires giant-events
-    # block-damage + terrain-damage-enabled (both on by default).
+    # Siege-only. Unlocked with phantoms; chance ramps 5% → 30% from first-night to cap.
     enabled: true
-    first-night: 15
-    chance-per-pack: 0.15
+    first-night: 100
+    unlock-chance: 0.05
+    chance-per-pack: 0.3
     max-per-world: 1
     announce: false
+  phantoms:
+    enabled: true
+    first-night: 100
+    unlock-chance: 0.15
+    max-chance-per-night: 0.6
+    count: 2
   sounds:
     enabled: true
     # Category the sounds play under. MASTER ignores per-category volume sliders
@@ -510,6 +484,3 @@ nightfall:
       - entity.warden.nearby_closer
       - entity.sculk_shrieker.shriek
       - entity.enderman.stare
-      - entity.ghast.warn
-      - ambient.soul_sand_valley.mood
-      - ambient.basalt_deltas.mood

@@ -5,11 +5,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.event.weather.LightningStrikeEvent;
 
 /**
- * Applies Nightfall escalation strength to hostiles that spawn at night. Runs
- * after {@code MobBuffManager} (which is {@code HIGHEST}) so the escalation
- * layers on top of the base mob-buff instead of being overwritten.
+ * Applies Nightfall escalation to night hostiles and widens the "monsters
+ * too close to sleep" check.
  */
 public final class NightfallListener implements Listener {
     private final NightfallManager nightfallManager;
@@ -23,5 +24,15 @@ public final class NightfallListener implements Listener {
         if (event.getEntity() instanceof LivingEntity living) {
             nightfallManager.handleCreatureSpawn(living, event.getSpawnReason());
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBedEnter(PlayerBedEnterEvent event) {
+        nightfallManager.handleBedEnter(event);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onLightning(LightningStrikeEvent event) {
+        nightfallManager.handleLightning(event);
     }
 }

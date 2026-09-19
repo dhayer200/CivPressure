@@ -7,7 +7,7 @@ description: Biome-based civilization pressure for Paper.
 commands:
   civ:
     description: CivPressure administration and status command.
-    usage: /civ [status|reload|ore|season|drought|wetseason|durability|compass|giant|nightfall]
+    usage: /civ [status|reload|ore|season|drought|wetseason|durability|compass|giant|nightfall|config]
     permission: civ.help
   civhelp:
     description: Shows the CivPressure player help overview.
@@ -29,6 +29,7 @@ permissions:
       civ.giant.admin: true
       civ.nightfall: true
       civ.nightfall.admin: true
+      civ.config: true
   civ.reload:
     description: Allows reloading the CivPressure configuration.
     default: op
@@ -57,7 +58,10 @@ permissions:
     description: Allows viewing Nightfall escalation status.
     default: op
   civ.nightfall.admin:
-    description: Allows resetting or setting the Nightfall escalation day.
+    description: Allows resetting or setting Nightfall and spawning test sieges.
+    default: op
+  civ.config:
+    description: Allows reading and changing CivPressure config.yml from commands.
     default: op
   civ.help:
     description: Allows use of CivPressure help and status commands.

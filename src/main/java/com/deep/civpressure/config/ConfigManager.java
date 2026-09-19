@@ -36,9 +36,9 @@ public final class ConfigManager implements ConfigIntReader {
         states.put("Durability Pressure", isModuleEnabled("durability-pressure"));
         states.put("Biome Compass", isModuleEnabled("biome-compass"));
         states.put("Mob Buffs", isModuleEnabled("mob-buffs"));
-        states.put("Giant Events", isModuleEnabled("giant-events"));
         states.put("Mountain Polar Bears", isModuleEnabled("mountain-polar-bears"));
         states.put("Nightfall", isModuleEnabled("nightfall"));
+        states.put("Skeleton Traps", isModuleEnabled("skeleton-traps"));
         return states;
     }
 
@@ -92,5 +92,32 @@ public final class ConfigManager implements ConfigIntReader {
         return getString(
                 "biome-groups.display-names." + group.name().toLowerCase(Locale.ROOT),
                 fallback);
+    }
+
+    public boolean contains(String path) {
+        return plugin.getConfig().contains(path);
+    }
+
+    public boolean isSection(String path) {
+        return plugin.getConfig().isConfigurationSection(path);
+    }
+
+    public Object getRaw(String path) {
+        return plugin.getConfig().get(path);
+    }
+
+    public List<String> leafKeys() {
+        List<String> keys = new java.util.ArrayList<>();
+        for (String key : plugin.getConfig().getKeys(true)) {
+            if (!plugin.getConfig().isConfigurationSection(key)) {
+                keys.add(key);
+            }
+        }
+        return keys;
+    }
+
+    public void setAndSave(String path, Object value) {
+        plugin.getConfig().set(path, value);
+        plugin.saveConfig();
     }
 }

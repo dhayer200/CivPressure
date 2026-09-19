@@ -56,6 +56,42 @@ public final class NightfallEscalation {
         return (double) nightsSurvived / (double) capNights;
     }
 
+    /**
+     * Linear progress from an unlock night to the cap. Zero before and on the
+     * unlock night, one at {@code capNights}. Used for late features (giants,
+     * phantoms) that stay off until a milestone.
+     */
+    public static double unlockProgress(long nightsSurvived, long unlockNight, int capNights) {
+        if (nightsSurvived < unlockNight) {
+            return 0.0;
+        }
+        if (capNights <= unlockNight) {
+            return nightsSurvived >= unlockNight ? 1.0 : 0.0;
+        }
+        if (nightsSurvived >= capNights) {
+            return 1.0;
+        }
+        return (double) (nightsSurvived - unlockNight) / (double) (capNights - unlockNight);
+    }
+
+    /**
+     * Chance for a feature that is locked until {@code unlockNight}, then ramps
+     * linearly from {@code startChance} (on the unlock night) to {@code endChance}
+     * at the cap.
+     */
+    public static double unlockedChance(
+            long nightsSurvived,
+            long unlockNight,
+            int capNights,
+            double startChance,
+            double endChance
+    ) {
+        if (nightsSurvived < unlockNight) {
+            return 0.0;
+        }
+        return chance(unlockProgress(nightsSurvived, unlockNight, capNights), startChance, endChance);
+    }
+
     /** Linear interpolation between {@code start} and {@code end}, clamped to [0,1]. */
     public static double lerp(double start, double end, double t) {
         return start + (end - start) * clamp01(t);
@@ -81,6 +117,46 @@ public final class NightfallEscalation {
         int lo = Math.max(0, minSize);
         int hi = Math.max(lo, maxSize);
         return (int) Math.round(lerp(lo, hi, progress));
+    }
+
+    /**
+     * Picks an index from a weight table. {@code roll} should be in
+     * {@code [0, totalWeight)}. Returns {@code -1} if every weight is zero.
+     */
+    public static int pickWeightedIndex(int[] weights, int roll) {
+        int total = 0;
+        for (int weight : weights) {
+            total += Math.max(0, weight);
+        }
+        if (total <= 0) {
+            return -1;
+        }
+        int remaining = Math.floorMod(roll, total);
+        for (int i = 0; i < weights.length; i++) {
+            remaining -= Math.max(0, weights[i]);
+            if (remaining < 0) {
+                return i;
+            }
+        }
+        return weights.length - 1;
+    }
+
+    /** Multiplies a weight and rounds to the nearest whole number of at least 1 when the base is positive. */
+    public static int scaleWeight(int baseWeight, double factor) {
+        if (baseWeight <= 0) {
+            return 0;
+        }
+        return Math.max(1, (int) Math.round(baseWeight * factor));
+    }
+
+    /**
+     * Relative attraction of a settlement cell. Beds weigh more than villagers;
+     * a vanilla village structure is only a fallback landmark.
+     */
+    public static int settlementScore(int beds, int villagers, boolean villageStructure) {
+        return Math.max(0, beds) * 4
+                + Math.max(0, villagers) * 3
+                + (villageStructure ? 2 : 0);
     }
 
     /**

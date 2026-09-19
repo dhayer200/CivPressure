@@ -4,6 +4,7 @@ import com.deep.civpressure.CivPressurePlugin;
 import com.deep.civpressure.biome.BiomeGroup;
 import com.deep.civpressure.biome.BiomeGroupRegistry;
 import com.deep.civpressure.config.ConfigManager;
+import com.deep.civpressure.config.ConfigValueParser;
 import com.deep.civpressure.giant.GiantEventManager;
 import com.deep.civpressure.nightfall.NightfallManager;
 import com.deep.civpressure.ore.OreRates;
@@ -52,7 +53,8 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             "durability",
             "compass",
             "giant",
-            "nightfall");
+            "nightfall",
+            "config");
     private static final List<String> ORE_SUBCOMMANDS = List.of(
             "info",
             "chunk",
@@ -112,6 +114,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             case "compass" -> handleCompass(sender, args);
             case "giant" -> handleGiant(sender, args);
             case "nightfall" -> handleNightfall(sender, args);
+            case "config" -> handleConfig(sender, args);
             default -> {
                 sendUsage(sender, label);
                 yield true;
@@ -249,6 +252,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                 }
                 yield setNightfallDay(sender, args, day, false);
             }
+            case "siege" -> withPlayer(sender, this::spawnNightfallSiege);
             default -> {
                 sendNightfallUsage(sender);
                 yield true;
@@ -353,10 +357,110 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                     + ChatColor.GRAY + " - Restart Nightfall at day 0.");
             sender.sendMessage(ChatColor.YELLOW + "/civ nightfall set <day> [world|all]"
                     + ChatColor.GRAY + " - Jump Nightfall to any day.");
+            sender.sendMessage(ChatColor.YELLOW + "/civ nightfall siege"
+                    + ChatColor.GRAY + " - Spawn a village siege at nearby beds or a village.");
         }
         if (!sender.hasPermission("civ.nightfall") && !sender.hasPermission("civ.nightfall.admin")) {
             sender.sendMessage(ChatColor.RED + "You do not have permission to use Nightfall commands.");
         }
+    }
+
+    private boolean handleConfig(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("civ.config")) {
+            sender.sendMessage(ChatColor.RED + "You do not have permission to edit CivPressure config.");
+            return true;
+        }
+        if (args.length < 2) {
+            sendConfigUsage(sender);
+            return true;
+        }
+        return switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "get" -> getConfigValue(sender, args);
+            case "set" -> setConfigValue(sender, args);
+            default -> {
+                sendConfigUsage(sender);
+                yield true;
+            }
+        };
+    }
+
+    private boolean getConfigValue(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(ChatColor.RED + "Usage: /civ config get <key>");
+            return true;
+        }
+        String path = ConfigValueParser.resolvePath(args[2]);
+        if (!configManager.contains(path)) {
+            sender.sendMessage(ChatColor.RED + "Unknown config key: " + path);
+            suggestConfigKeys(sender, args[2]);
+            return true;
+        }
+        if (configManager.isSection(path)) {
+            sender.sendMessage(ChatColor.RED + path + " is a section. Get a specific key under it.");
+            return true;
+        }
+        Object value = configManager.getRaw(path);
+        sender.sendMessage(ChatColor.GOLD + path + ChatColor.GRAY + " = "
+                + ChatColor.WHITE + ConfigValueParser.format(value));
+        return true;
+    }
+
+    private boolean setConfigValue(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            sender.sendMessage(ChatColor.RED + "Usage: /civ config set <key> <value>");
+            sender.sendMessage(ChatColor.GRAY + "Example: /civ config set giant-chance 30%");
+            return true;
+        }
+        String path = ConfigValueParser.resolvePath(args[2]);
+        if (!configManager.contains(path)) {
+            sender.sendMessage(ChatColor.RED + "Unknown config key: " + path);
+            suggestConfigKeys(sender, args[2]);
+            return true;
+        }
+        if (configManager.isSection(path)) {
+            sender.sendMessage(ChatColor.RED + path + " is a section, not a single value.");
+            return true;
+        }
+        Object current = configManager.getRaw(path);
+        String rawValue = String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length));
+        ConfigValueParser.Result parsed = ConfigValueParser.parse(path, current, rawValue);
+        if (!parsed.ok()) {
+            sender.sendMessage(ChatColor.RED + parsed.error());
+            return true;
+        }
+        configManager.setAndSave(path, parsed.value());
+        plugin.reloadConfiguration();
+        sender.sendMessage(ChatColor.GREEN + "Set " + path + " to "
+                + ConfigValueParser.format(parsed.value()) + ".");
+        return true;
+    }
+
+    private void suggestConfigKeys(CommandSender sender, String input) {
+        String needle = input.toLowerCase(Locale.ROOT);
+        List<String> matches = new ArrayList<>();
+        for (String alias : ConfigValueParser.aliases().keySet()) {
+            if (alias.contains(needle)) {
+                matches.add(alias);
+            }
+        }
+        for (String key : configManager.leafKeys()) {
+            if (key.toLowerCase(Locale.ROOT).contains(needle) && matches.size() < 8) {
+                matches.add(key);
+            }
+        }
+        if (!matches.isEmpty()) {
+            sender.sendMessage(ChatColor.GRAY + "Did you mean: " + String.join(", ", matches));
+        }
+    }
+
+    private void sendConfigUsage(CommandSender sender) {
+        sender.sendMessage(ChatColor.GOLD + "CivPressure config commands:");
+        sender.sendMessage(ChatColor.YELLOW + "/civ config get <key>"
+                + ChatColor.GRAY + " - Show a live config value.");
+        sender.sendMessage(ChatColor.YELLOW + "/civ config set <key> <value>"
+                + ChatColor.GRAY + " - Change it and save config.yml.");
+        sender.sendMessage(ChatColor.GRAY + "Shortcuts: giant-chance, nightfall-giant-chance, polar-bear-chance.");
+        sender.sendMessage(ChatColor.GRAY + "Percents work on chance keys: /civ config set giant-chance 30%");
     }
 
     private double round2(double value) {
@@ -384,11 +488,37 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
         };
     }
 
+    private boolean spawnNightfallSiege(Player player) {
+        if (!senderHasNightfallAdmin(player)) {
+            player.sendMessage(ChatColor.RED + "You do not have permission to spawn Nightfall sieges.");
+            return true;
+        }
+        if (!configManager.isModuleEnabled("nightfall")) {
+            player.sendMessage(ChatColor.RED + "Nightfall is disabled.");
+            return true;
+        }
+        org.bukkit.Location target = nightfallManager.forceVillageSiege(player);
+        if (target == null) {
+            player.sendMessage(ChatColor.RED + "Could not spawn a siege in this world.");
+            return true;
+        }
+        player.sendMessage(ChatColor.GREEN + "Spawned a Nightfall siege at "
+                + target.getBlockX() + ", "
+                + target.getBlockY() + ", "
+                + target.getBlockZ() + ".");
+        return true;
+    }
+
+    private boolean senderHasNightfallAdmin(CommandSender sender) {
+        return sender.hasPermission("civ.nightfall.admin");
+    }
+
     private boolean showGiantStatus(CommandSender sender) {
-        boolean enabled = configManager.isModuleEnabled("giant-events");
-        sender.sendMessage(ChatColor.GOLD + "Giant events");
-        sender.sendMessage(ChatColor.GRAY + "Module: "
-                + stateColor(enabled) + (enabled ? "enabled" : "disabled"));
+        boolean enabled = configManager.isModuleEnabled("nightfall");
+        sender.sendMessage(ChatColor.GOLD + "Siege giants");
+        sender.sendMessage(ChatColor.GRAY + "Nightfall: "
+                + stateColor(enabled) + (enabled ? "enabled" : "disabled")
+                + ChatColor.GRAY + " (giants only join village sieges)");
         sender.sendMessage(ChatColor.GRAY + "Active loaded event giants: "
                 + ChatColor.WHITE + giantEventManager.countAll());
         sender.sendMessage(ChatColor.GRAY + "Maximum per world: "
@@ -404,8 +534,8 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean spawnGiant(Player player) {
-        if (!configManager.isModuleEnabled("giant-events")) {
-            player.sendMessage(ChatColor.RED + "The giant-events module is disabled.");
+        if (!configManager.isModuleEnabled("nightfall")) {
+            player.sendMessage(ChatColor.RED + "Nightfall is disabled; siege giants cannot spawn.");
             return true;
         }
         org.bukkit.entity.Giant giant = giantEventManager.spawnForCommand(player);
@@ -940,6 +1070,10 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/" + label + " nightfall set <day> [world|all]"
                     + ChatColor.GRAY + " - Jump Nightfall to any day.");
         }
+        if (sender.hasPermission("civ.config")) {
+            sender.sendMessage(ChatColor.YELLOW + "/" + label + " config get|set"
+                    + ChatColor.GRAY + " - Read or change config.yml from chat.");
+        }
         sender.sendMessage(ChatColor.YELLOW + "/civhelp"
                 + ChatColor.GRAY + " - Show the player help overview.");
     }
@@ -947,11 +1081,11 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
     private void sendGiantUsage(CommandSender sender) {
         sender.sendMessage(ChatColor.GOLD + "CivPressure giant commands:");
         sender.sendMessage(ChatColor.YELLOW + "/civ giant status"
-                + ChatColor.GRAY + " - Show event giant state and counts.");
+                + ChatColor.GRAY + " - Show loaded siege giants.");
         sender.sendMessage(ChatColor.YELLOW + "/civ giant spawn"
-                + ChatColor.GRAY + " - Spawn an event giant near you.");
+                + ChatColor.GRAY + " - Spawn a test siege giant near you.");
         sender.sendMessage(ChatColor.YELLOW + "/civ giant clear [world|all]"
-                + ChatColor.GRAY + " - Remove loaded event giants.");
+                + ChatColor.GRAY + " - Remove loaded siege giants.");
     }
 
     @Override
@@ -999,6 +1133,7 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("civ.nightfall.admin")) {
                 options.add("reset");
                 options.add("set");
+                options.add("siege");
             }
             return prefixMatches(options, args[1]);
         }
@@ -1019,6 +1154,17 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                 && args[1].equalsIgnoreCase("set")
                 && sender.hasPermission("civ.nightfall.admin")) {
             return prefixMatches(nightfallWorldCompletions(), args[3]);
+        }
+        if (args.length == 2
+                && args[0].equalsIgnoreCase("config")
+                && sender.hasPermission("civ.config")) {
+            return prefixMatches(List.of("get", "set"), args[1]);
+        }
+        if (args.length == 3
+                && args[0].equalsIgnoreCase("config")
+                && (args[1].equalsIgnoreCase("get") || args[1].equalsIgnoreCase("set"))
+                && sender.hasPermission("civ.config")) {
+            return prefixMatches(configKeyCompletions(), args[2]);
         }
         if (args.length == 3
                 && args[0].equalsIgnoreCase("giant")
@@ -1081,6 +1227,9 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
                     && !sender.hasPermission("civ.nightfall.admin")) {
                 continue;
             }
+            if (subcommand.equals("config") && !sender.hasPermission("civ.config")) {
+                continue;
+            }
             if ((subcommand.equals("chunk") || subcommand.equals("radius"))
                     && !sender.hasPermission("civ.ore.scan")) {
                 continue;
@@ -1093,6 +1242,12 @@ public final class CivCommand implements CommandExecutor, TabCompleter {
             }
         }
         return completions;
+    }
+
+    private List<String> configKeyCompletions() {
+        List<String> keys = new ArrayList<>(ConfigValueParser.aliases().keySet());
+        keys.addAll(configManager.leafKeys());
+        return keys;
     }
 
     private List<String> nightfallWorldCompletions() {

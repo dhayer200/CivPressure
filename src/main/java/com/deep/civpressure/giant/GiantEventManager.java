@@ -21,7 +21,6 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.Container;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Enemy;
@@ -73,11 +72,10 @@ public final class GiantEventManager {
         stopTasks();
         loadAllowedGroups();
         loadTerrainProtections();
-        boolean giantEvents = configManager.isModuleEnabled("giant-events");
-        // Nightfall can spawn managed giants too, so keep maintaining them (and
-        // their terrain damage) whenever either module is on.
+        // Roaming giant sightings were removed. Giants only exist as Nightfall
+        // siege bosses; keep maintenance (pursuit, craters, loot) while Nightfall is on.
         boolean nightfall = configManager.isModuleEnabled("nightfall");
-        if (!giantEvents && !nightfall) {
+        if (!nightfall) {
             if (configManager.getBoolean("giant-events.remove-existing-when-disabled", false)) {
                 clearAll();
             }
@@ -93,16 +91,6 @@ public final class GiantEventManager {
                 this::maintainGiants,
                 maintenanceInterval,
                 maintenanceInterval);
-        if (giantEvents) {
-            long spawnInterval = Math.max(
-                    20L,
-                    configManager.getLong("giant-events.spawn-check-interval-ticks", 24000L));
-            spawnTask = plugin.getServer().getScheduler().runTaskTimer(
-                    plugin,
-                    this::runSpawnCheck,
-                    spawnInterval,
-                    spawnInterval);
-        }
     }
 
     /**
@@ -124,19 +112,31 @@ public final class GiantEventManager {
         }
         double min = Math.max(1.0, minDistance);
         double max = Math.max(min, maxDistance);
-        Location location = findNearbyGiantLocation(player, min, max);
+        Location location = findNearbyGiantLocation(player.getLocation(), min, max);
         return location == null ? null : spawn(location, announce);
     }
 
-    private Location findNearbyGiantLocation(Player player, double min, double max) {
+    /** Spawns a managed giant near a world location (used for village sieges). */
+    public Giant spawnManagedGiantAt(Location origin, boolean announce) {
+        if (origin.getWorld() == null || !isAllowedWorld(origin.getWorld())) {
+            return null;
+        }
+        double min = Math.max(1.0, configManager.getDouble("giant-events.min-distance-from-players", 16.0));
+        double max = Math.max(min, configManager.getDouble("giant-events.max-distance-from-players", 40.0));
+        Location location = findNearbyGiantLocation(origin, min, max);
+        return location == null ? null : spawn(location, announce);
+    }
+
+    private Location findNearbyGiantLocation(Location origin, double min, double max) {
         int attempts = Math.max(8, configManager.getInt("giant-events.location-attempts", 32));
         ThreadLocalRandom random = ThreadLocalRandom.current();
+        World world = origin.getWorld();
         for (int attempt = 0; attempt < attempts; attempt++) {
             double angle = random.nextDouble(Math.PI * 2.0);
             double distance = random.nextDouble(min, max + 0.01);
-            int x = (int) Math.floor(player.getX() + Math.cos(angle) * distance);
-            int z = (int) Math.floor(player.getZ() + Math.sin(angle) * distance);
-            Location location = findSurface(player.getWorld(), x, z);
+            int x = (int) Math.floor(origin.getX() + Math.cos(angle) * distance);
+            int z = (int) Math.floor(origin.getZ() + Math.sin(angle) * distance);
+            Location location = findSurface(world, x, z);
             if (location != null) {
                 return location;
             }
@@ -154,7 +154,7 @@ public final class GiantEventManager {
     }
 
     public Giant spawnForCommand(Player player) {
-        if (!configManager.isModuleEnabled("giant-events")) {
+        if (!configManager.isModuleEnabled("nightfall")) {
             return null;
         }
         if (!isAllowedWorld(player.getWorld())) {
@@ -479,11 +479,7 @@ public final class GiantEventManager {
                 || type == Material.STRUCTURE_VOID) {
             return true;
         }
-        if (terrainProtectedMaterials.contains(type)) {
-            return true;
-        }
-        // Never let giants eat player storage, regardless of the configured list.
-        return block.getState() instanceof Container;
+        return terrainProtectedMaterials.contains(type);
     }
 
     private void attackIfInRange(

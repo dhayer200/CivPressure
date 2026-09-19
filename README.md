@@ -46,25 +46,19 @@ values are retained.
 - Mob buffs: configurable health multipliers for all Paper `Enemy` mobs and
   all remaining `Mob` entities, separate iron-golem settings, golem knockback
   resistance, and cold-biome skeleton-to-stray conversion.
-- Giant events: rare, independently configured giant sightings with event
-  attributes, pursuit, terrain damage, despawning, announcements, and modest
-  loot.
 - Mountain polar bears: configured mountain biomes can produce capped polar
   bear spawns alongside natural passive spawns.
-- Nightfall: behind-the-scenes escalation where each night is more dangerous
-  than the last (scaling with the world's age up to a configurable cap, default
-  50 nights). Night hostiles start at vanilla on night 1 and ramp to their caps
-  (default +150% health, +50% damage) by the cap; only zombies (and zombie
-  variants) also gain speed (up to +15%). A diversified siege is guaranteed near
-  each player every night (scaling from 6 to 12 mobs, always at least one
-  jockey), and natural night spawns are boosted by +25%. Atmospheric
-  sounds play under the MASTER sound category so they ignore per-category volume
-  sliders. Add your own sound IDs to the configured list. Every night zombie is
-  also made a door-breaker (needs Hard difficulty + mobGriefing to actually
-  break; iron doors immune). Past a configurable night, hunting packs can arrive
-  escorted by a terrain-damaging giant (reuses the giant-events system for
-  stats, loot, and despawn). Designed to be the sole source of mob strength (use
-  with the mob-buffs module disabled).
+- Nightfall: linear escalation to a 200-day cap. Night 1 is vanilla. Hostiles
+  reach +50% health and +25% damage; spider jockeys go from 1% to 35%; extra
+  natural spawns go from 0% to +50%. Sieges target beds and villages (zombies,
+  husks, skeletons, strays, plus 1–2 spider jockeys, mostly skeletons) and
+  grow from 12 to 24 mobs. They roll 5%–50% when a player is at a settlement.
+  From night 100, phantoms can spawn and a giant may join a siege (up to 30%).
+  Giants leave TNT-like craters. Sleep is blocked if monsters are within 1.2×
+  vanilla bed range. Ops can jump the clock with `/civ nightfall set` or
+  force a wave with `/civ nightfall siege`.
+- Skeleton traps: storm lightning can spawn extra trapped skeleton-horse
+  hordes. Chance is 0% on night 1 and ramps linearly to 25% at the cap.
 - Biome Compass: configurable recipe, marked item, selection GUI, cached biome
   searches, and periodic target updates.
 
@@ -102,6 +96,9 @@ configuration section.
 | `/civ nightfall status` | Show current night, escalation percent, and mob multipliers. |
 | `/civ nightfall reset [world\|all]` | Restart Nightfall at day 0 (admin). Does not rewind the world calendar. |
 | `/civ nightfall set <day> [world\|all]` | Jump Nightfall to any day (admin). |
+| `/civ nightfall siege` | Spawn a village siege at nearby beds or a village (admin). |
+| `/civ config get <key>` | Show a live config.yml value (admin). |
+| `/civ config set <key> <value>` | Change a config value, save it, and reload (admin). |
 
 ## Permissions
 
@@ -118,6 +115,7 @@ configuration section.
 | `civ.giant.admin` | op |
 | `civ.nightfall` | op |
 | `civ.nightfall.admin` | op |
+| `civ.config` | op |
 | `civ.help` | true |
 
 ## Biome Groups

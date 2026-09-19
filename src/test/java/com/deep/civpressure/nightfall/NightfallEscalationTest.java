@@ -85,6 +85,47 @@ class NightfallEscalationTest {
     }
 
     @Test
+    void siegePackDoublesFromTwelveToTwentyFourByTheCap() {
+        assertEquals(12, NightfallEscalation.packSize(0.0, 12, 24));
+        assertEquals(18, NightfallEscalation.packSize(0.5, 12, 24));
+        assertEquals(24, NightfallEscalation.packSize(1.0, 12, 24));
+    }
+
+    @Test
+    void pickWeightedIndexFollowsTheWeightTable() {
+        int[] weights = {16, 4, 2, 5};
+        assertEquals(0, NightfallEscalation.pickWeightedIndex(weights, 0));
+        assertEquals(0, NightfallEscalation.pickWeightedIndex(weights, 15));
+        assertEquals(1, NightfallEscalation.pickWeightedIndex(weights, 16));
+        assertEquals(2, NightfallEscalation.pickWeightedIndex(weights, 20));
+        assertEquals(3, NightfallEscalation.pickWeightedIndex(weights, 22));
+        assertEquals(-1, NightfallEscalation.pickWeightedIndex(new int[] {0, 0}, 0));
+    }
+
+    @Test
+    void babyZombieJockeyWeightIsOneAndAQuarterTimesABaseSlot() {
+        assertEquals(5, NightfallEscalation.scaleWeight(4, 1.25));
+        assertEquals(1, NightfallEscalation.scaleWeight(1, 1.25));
+    }
+
+    @Test
+    void skeletonTrapChanceStaysOffOnNightOneAndHitsTheCap() {
+        assertEquals(0.0, NightfallEscalation.chance(0.0, 0.0, 0.25), 1.0e-9);
+        assertEquals(0.125, NightfallEscalation.chance(0.5, 0.0, 0.25), 1.0e-9);
+        assertEquals(0.25, NightfallEscalation.chance(1.0, 0.0, 0.25), 1.0e-9);
+    }
+
+    @Test
+    void settlementScorePrefersBedsAndStillCountsVillages() {
+        assertTrue(NightfallEscalation.settlementScore(3, 0, false)
+                > NightfallEscalation.settlementScore(0, 1, true));
+        assertTrue(NightfallEscalation.settlementScore(0, 2, false)
+                > NightfallEscalation.settlementScore(0, 0, true));
+        assertEquals(0, NightfallEscalation.settlementScore(0, 0, false));
+        assertEquals(2, NightfallEscalation.settlementScore(0, 0, true));
+    }
+
+    @Test
     void packSizeHandlesInvertedBounds() {
         assertEquals(6, NightfallEscalation.packSize(1.0, 6, 1));
     }
@@ -121,6 +162,23 @@ class NightfallEscalationTest {
             long offset = NightfallEscalation.clockOffsetFor(worldDays, target);
             assertEquals(Math.max(0L, target), NightfallEscalation.nightsSurvived(worldDays, offset));
         }
+    }
+
+    @Test
+    void unlockProgressIsZeroBeforeTheUnlockNightThenLinearToTheCap() {
+        assertEquals(0.0, NightfallEscalation.unlockProgress(99, 100, 200), 1.0e-9);
+        assertEquals(0.0, NightfallEscalation.unlockProgress(100, 100, 200), 1.0e-9);
+        assertEquals(0.5, NightfallEscalation.unlockProgress(150, 100, 200), 1.0e-9);
+        assertEquals(1.0, NightfallEscalation.unlockProgress(200, 100, 200), 1.0e-9);
+        assertEquals(1.0, NightfallEscalation.unlockProgress(250, 100, 200), 1.0e-9);
+    }
+
+    @Test
+    void unlockedChanceIsZeroBeforeUnlockThenRamps() {
+        assertEquals(0.0, NightfallEscalation.unlockedChance(99, 100, 200, 0.05, 0.30), 1.0e-9);
+        assertEquals(0.05, NightfallEscalation.unlockedChance(100, 100, 200, 0.05, 0.30), 1.0e-9);
+        assertEquals(0.175, NightfallEscalation.unlockedChance(150, 100, 200, 0.05, 0.30), 1.0e-9);
+        assertEquals(0.30, NightfallEscalation.unlockedChance(200, 100, 200, 0.05, 0.30), 1.0e-9);
     }
 
     @Test

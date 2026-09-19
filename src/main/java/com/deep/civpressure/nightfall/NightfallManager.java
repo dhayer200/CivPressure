@@ -19,19 +19,26 @@ import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.SoundCategory;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
-import org.bukkit.entity.Chicken;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Phantom;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.SkeletonHorse;
 import org.bukkit.entity.Spider;
+import org.bukkit.entity.Villager;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Zombie;
+import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.event.weather.LightningStrikeEvent;
+import org.bukkit.StructureType;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -65,10 +72,9 @@ public final class NightfallManager {
     private List<JockeyRider> jockeyRiders = List.of();
     private List<String> sounds = List.of();
     private SoundCategory soundCategory = SoundCategory.MASTER;
-    // Tracks the last calendar day a guaranteed siege ran for each player, so
-    // each real night produces exactly one siege even if the Nightfall clock
-    // is reset mid-night.
-    private final Map<UUID, Long> lastSiegeDay = new HashMap<>();
+    // One village-siege attempt per village cell per calendar night.
+    private final Map<String, Long> lastVillageSiegeDay = new HashMap<>();
+    private final Map<UUID, Long> lastPhantomDay = new HashMap<>();
     private final Map<UUID, Long> clockOffsets = new HashMap<>();
     private final File stateFile;
 
@@ -148,7 +154,7 @@ public final class NightfallManager {
     }
 
     public int capNights() {
-        return configManager.getInt("nightfall.cap-nights", 50);
+        return configManager.getInt("nightfall.cap-nights", 200);
     }
 
     public double progress(World world) {
@@ -184,6 +190,30 @@ public final class NightfallManager {
     }
 
     /**
+     * Vanilla blocks sleep if a monster is within 8×5×8 of the bed. Nightfall
+     * multiplies that (default 1.2) so you have to clear a slightly wider ring.
+     */
+    public void handleBedEnter(PlayerBedEnterEvent event) {
+        if (!isEnabled()) {
+            return;
+        }
+        double multiplier = Math.max(
+                1.0,
+                configManager.getDouble("nightfall.sleep.monster-radius-multiplier", 1.2));
+        double horizontal = 8.0 * multiplier;
+        double vertical = 5.0 * multiplier;
+        Location bed = event.getBed().getLocation();
+        for (Entity entity : bed.getWorld().getNearbyEntities(bed, horizontal, vertical, horizontal)) {
+            if (entity instanceof Monster monster && !monster.isDead()) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage(
+                        org.bukkit.ChatColor.RED + "You cannot sleep; monsters are too close.");
+                return;
+            }
+        }
+    }
+
+    /**
      * Increases the effective night spawn rate: when a hostile spawns naturally
      * at night, there is a chance ({@code nightfall.spawn-rate.bonus}, default
      * 0.25) to spawn an extra one alongside it. Only fires for {@code NATURAL}
@@ -200,7 +230,8 @@ public final class NightfallManager {
         if (!isEligibleWorld(world) || !isNight(world)) {
             return;
         }
-        double bonus = Math.max(0.0, configManager.getDouble("nightfall.spawn-rate.bonus", 0.25));
+        double maxBonus = Math.max(0.0, configManager.getDouble("nightfall.spawn-rate.bonus", 0.5));
+        double bonus = NightfallEscalation.lerp(0.0, maxBonus, progress(world));
         ThreadLocalRandom random = ThreadLocalRandom.current();
         int extra = (int) Math.floor(bonus);
         if (random.nextDouble() < bonus - extra) {
@@ -251,14 +282,13 @@ public final class NightfallManager {
         if (!isEligibleWorld(world) || !isNight(world) || !entity.getPassengers().isEmpty()) {
             return;
         }
-        double chance;
-        if (entity instanceof Spider) {
-            chance = configManager.getDouble("nightfall.jockeys.spider-rider-chance", 0.3);
-        } else if (entity instanceof Chicken) {
-            chance = configManager.getDouble("nightfall.jockeys.chicken-rider-chance", 0.5);
-        } else {
+        if (!(entity instanceof Spider)) {
             return;
         }
+        double chance = NightfallEscalation.chance(
+                progress(world),
+                configManager.getDouble("nightfall.jockeys.spider-rider-chance-min", 0.01),
+                configManager.getDouble("nightfall.jockeys.spider-rider-chance", 0.35));
         if (ThreadLocalRandom.current().nextDouble() >= chance) {
             return;
         }
@@ -276,7 +306,8 @@ public final class NightfallManager {
             }
             double progress = progress(world);
             maybePlaySound(player, world, progress);
-            maybeRunSiege(player, world, progress);
+            maybeRunVillageSiege(player, world, progress);
+            maybeSpawnPhantoms(player, world);
         }
     }
 
@@ -313,66 +344,135 @@ public final class NightfallManager {
     }
 
     /**
-     * Runs at most one guaranteed siege per player per world-night. Unlike a
-     * vanilla zombie siege (a nightly chance), Nightfall's siege is guaranteed
-     * once the player is out at night.
+     * At most one siege attempt per settlement cell per calendar night. Chance
+     * scales linearly (default 5% → 50%). No beds or village nearby means no siege.
      */
-    private void maybeRunSiege(Player player, World world, double progress) {
+    private void maybeRunVillageSiege(Player player, World world, double progress) {
         if (!configManager.getBoolean("nightfall.spawns.enabled", true)) {
             return;
         }
+        Location village = findCivilizationCenter(player, world);
+        if (village == null) {
+            return;
+        }
         long day = worldDays(world);
-        Long last = lastSiegeDay.get(player.getUniqueId());
+        String key = villageKey(village);
+        Long last = lastVillageSiegeDay.get(key);
         if (last != null && last == day) {
             return;
         }
-        lastSiegeDay.put(player.getUniqueId(), day);
-        spawnSiege(player, world, progress);
+        lastVillageSiegeDay.put(key, day);
+        double chance = NightfallEscalation.chance(
+                progress,
+                configManager.getDouble("nightfall.spawns.siege-chance-min", 0.05),
+                configManager.getDouble("nightfall.spawns.siege-chance-max", 0.50));
+        if (ThreadLocalRandom.current().nextDouble() >= chance) {
+            return;
+        }
+        spawnVillageSiege(village, player, world, progress, false);
     }
 
     /**
-     * Spawns a diversified siege near the player: weighted "infantry" plus a
-     * fraction of jockey "cavalry", scaled by escalation. A giant may also join
-     * once past the configured night.
+     * Admin command: spawn a siege at the nearest beds/village, or at the
+     * player if no settlement is in range.
      */
-    private void spawnSiege(Player player, World world, double progress) {
+    public Location forceVillageSiege(Player player) {
+        if (!isEnabled()) {
+            return null;
+        }
+        World world = player.getWorld();
+        if (!isEligibleWorld(world)) {
+            return null;
+        }
+        Location target = findCivilizationCenter(player, world);
+        if (target == null) {
+            target = player.getLocation();
+        }
+        spawnVillageSiege(target, player, world, progress(world), true);
+        return target;
+    }
+
+    /**
+     * Storm lightning can become a trapped skeleton-horse horde. Chance scales
+     * linearly with Nightfall days (or raw world days if Nightfall is off).
+     */
+    public void handleLightning(LightningStrikeEvent event) {
+        if (!configManager.isModuleEnabled("skeleton-traps")) {
+            return;
+        }
+        if (event.getCause() != LightningStrikeEvent.Cause.WEATHER) {
+            return;
+        }
+        World world = event.getWorld();
+        if (!isEligibleWorld(world)) {
+            return;
+        }
+        double trapProgress = isEnabled()
+                ? progress(world)
+                : NightfallEscalation.progress(worldDays(world), capNights());
+        double chance = NightfallEscalation.chance(
+                trapProgress,
+                configManager.getDouble("nightfall.skeleton-traps.min-chance", 0.0),
+                configManager.getDouble("nightfall.skeleton-traps.max-chance", 0.25));
+        if (chance <= 0.0 || ThreadLocalRandom.current().nextDouble() >= chance) {
+            return;
+        }
+        Location loc = event.getLightning().getLocation();
+        Entity spawned = world.spawnEntity(
+                loc, EntityType.SKELETON_HORSE, CreatureSpawnEvent.SpawnReason.LIGHTNING);
+        if (spawned instanceof SkeletonHorse horse) {
+            horse.setTrapped(true);
+            tagOnly(horse);
+        } else if (spawned != null) {
+            spawned.remove();
+        }
+    }
+
+    /**
+     * Settlement wave: zombies / husks / skeletons plus spider jockeys. Pack
+     * size ramps 12 → 24. A giant may join after the unlock night.
+     */
+    private void spawnVillageSiege(
+            Location village,
+            Player player,
+            World world,
+            double progress,
+            boolean ignoreNearbyCap
+    ) {
         int maxNearby = Math.max(0, configManager.getInt("nightfall.spawns.max-nearby-per-player", 24));
-        if (countNearbyNightfallMobs(player) >= maxNearby) {
+        if (!ignoreNearbyCap && countNearbyNightfallMobs(village) >= maxNearby) {
             return;
         }
         int size = NightfallEscalation.packSize(
                 progress,
-                configManager.getInt("nightfall.spawns.min-pack-size", 4),
-                configManager.getInt("nightfall.spawns.max-pack-size", 12));
+                configManager.getInt("nightfall.spawns.min-pack-size", 12),
+                configManager.getInt("nightfall.spawns.max-pack-size", 24));
         if (size <= 0) {
             return;
         }
-        double fraction = Math.max(0.0, Math.min(1.0,
-                configManager.getDouble("nightfall.spawns.jockey-fraction", 0.35)));
-        // Guarantee at least one jockey per siege (when jockeys are configured).
-        boolean jockeysAvailable = !jockeyMounts.isEmpty() && !jockeyRiders.isEmpty();
-        int jockeyCount = (int) Math.round(size * fraction);
-        if (jockeysAvailable) {
-            jockeyCount = Math.max(1, jockeyCount);
-        }
+        int minJockeys = Math.max(0, configManager.getInt("nightfall.spawns.min-jockeys", 1));
+        int maxJockeys = Math.max(minJockeys, configManager.getInt("nightfall.spawns.max-jockeys", 2));
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        int jockeyCount = jockeyMounts.isEmpty() || jockeyRiders.isEmpty()
+                ? 0
+                : minJockeys + random.nextInt(maxJockeys - minJockeys + 1);
         jockeyCount = Math.min(jockeyCount, size);
         int infantryCount = Math.max(0, size - jockeyCount);
         boolean targetPlayer = configManager.getBoolean("nightfall.spawns.target-player", true);
-        ThreadLocalRandom random = ThreadLocalRandom.current();
 
         for (int i = 0; i < infantryCount; i++) {
-            Location location = findSpawnNear(player, world);
+            Location location = findSpawnNear(village, world);
             if (location != null) {
                 spawnHostile(world, location, pickInfantry(random), progress, targetPlayer, player);
             }
         }
         for (int i = 0; i < jockeyCount; i++) {
-            Location location = findSpawnNear(player, world);
+            Location location = findSpawnNear(village, world);
             if (location != null) {
                 spawnJockey(world, location, progress, targetPlayer, player);
             }
         }
-        maybeSpawnGiantWithPack(player, world);
+        maybeSpawnGiantWithSiege(village, world);
     }
 
     private LivingEntity spawnHostile(
@@ -434,7 +534,10 @@ public final class NightfallManager {
         if (jockeyRiders.isEmpty()) {
             return null;
         }
-        JockeyRider spec = jockeyRiders.get(ThreadLocalRandom.current().nextInt(jockeyRiders.size()));
+        JockeyRider spec = pickRider(ThreadLocalRandom.current());
+        if (spec == null) {
+            return null;
+        }
         Entity riderEntity = world.spawnEntity(
                 mount.getLocation(), spec.type(), CreatureSpawnEvent.SpawnReason.JOCKEY);
         if (!(riderEntity instanceof LivingEntity rider)) {
@@ -465,46 +568,205 @@ public final class NightfallManager {
     }
 
     private EntityType pickInfantry(ThreadLocalRandom random) {
+        int[] weights = new int[siegeComposition.size()];
         int total = 0;
-        for (WeightedType weighted : siegeComposition) {
-            total += weighted.weight();
+        for (int i = 0; i < siegeComposition.size(); i++) {
+            weights[i] = siegeComposition.get(i).weight();
+            total += Math.max(0, weights[i]);
         }
         if (total <= 0) {
             return EntityType.ZOMBIE;
         }
-        int roll = random.nextInt(total);
-        for (WeightedType weighted : siegeComposition) {
-            roll -= weighted.weight();
-            if (roll < 0) {
-                return weighted.type();
-            }
+        int index = NightfallEscalation.pickWeightedIndex(weights, random.nextInt(total));
+        if (index < 0) {
+            return EntityType.ZOMBIE;
         }
-        return siegeComposition.get(siegeComposition.size() - 1).type();
+        return siegeComposition.get(index).type();
     }
 
-    private void maybeSpawnGiantWithPack(Player player, World world) {
+    private JockeyRider pickRider(ThreadLocalRandom random) {
+        if (jockeyRiders.isEmpty()) {
+            return null;
+        }
+        int[] weights = new int[jockeyRiders.size()];
+        int total = 0;
+        for (int i = 0; i < jockeyRiders.size(); i++) {
+            weights[i] = jockeyRiders.get(i).weight();
+            total += Math.max(0, weights[i]);
+        }
+        if (total <= 0) {
+            return jockeyRiders.get(0);
+        }
+        int index = NightfallEscalation.pickWeightedIndex(weights, random.nextInt(total));
+        if (index < 0) {
+            return jockeyRiders.get(0);
+        }
+        return jockeyRiders.get(index);
+    }
+
+    private void maybeSpawnGiantWithSiege(Location village, World world) {
         if (!configManager.getBoolean("nightfall.giant.enabled", true)) {
             return;
         }
-        if (nightsSurvived(world) < configManager.getLong("nightfall.giant.first-night", 15L)) {
+        long nights = nightsSurvived(world);
+        long unlock = configManager.getLong("nightfall.giant.first-night", 100L);
+        double chance = NightfallEscalation.unlockedChance(
+                nights,
+                unlock,
+                capNights(),
+                configManager.getDouble("nightfall.giant.unlock-chance", 0.05),
+                configManager.getDouble("nightfall.giant.chance-per-pack", 0.30));
+        if (chance <= 0.0 || ThreadLocalRandom.current().nextDouble() >= chance) {
             return;
         }
         int maxPerWorld = Math.max(0, configManager.getInt("nightfall.giant.max-per-world", 1));
         if (giantEventManager.count(world) >= maxPerWorld) {
             return;
         }
-        double chance = Math.max(0.0, Math.min(1.0,
-                configManager.getDouble("nightfall.giant.chance-per-pack", 0.15)));
+        giantEventManager.spawnManagedGiantAt(
+                village, configManager.getBoolean("nightfall.giant.announce", false));
+    }
+
+    private void maybeSpawnPhantoms(Player player, World world) {
+        if (!configManager.getBoolean("nightfall.phantoms.enabled", true)) {
+            return;
+        }
+        long nights = nightsSurvived(world);
+        long unlock = configManager.getLong("nightfall.phantoms.first-night", 100L);
+        double chance = NightfallEscalation.unlockedChance(
+                nights,
+                unlock,
+                capNights(),
+                configManager.getDouble("nightfall.phantoms.unlock-chance", 0.15),
+                configManager.getDouble("nightfall.phantoms.max-chance-per-night", 0.60));
+        if (chance <= 0.0) {
+            return;
+        }
+        long day = worldDays(world);
+        Long last = lastPhantomDay.get(player.getUniqueId());
+        if (last != null && last == day) {
+            return;
+        }
+        lastPhantomDay.put(player.getUniqueId(), day);
         if (ThreadLocalRandom.current().nextDouble() >= chance) {
             return;
         }
-        double min = Math.max(1.0, configManager.getDouble("nightfall.spawns.min-distance", 16.0));
-        double max = Math.max(min, configManager.getDouble("nightfall.spawns.max-distance", 40.0));
-        giantEventManager.spawnManagedGiantNear(
-                player, min, max, configManager.getBoolean("nightfall.giant.announce", false));
+        int count = Math.max(1, configManager.getInt("nightfall.phantoms.count", 2));
+        double progress = progress(world);
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        for (int i = 0; i < count; i++) {
+            Location at = player.getLocation().clone().add(
+                    random.nextDouble(-12.0, 12.0),
+                    random.nextDouble(16.0, 28.0),
+                    random.nextDouble(-12.0, 12.0));
+            Entity spawned = world.spawnEntity(at, EntityType.PHANTOM, CreatureSpawnEvent.SpawnReason.CUSTOM);
+            if (spawned instanceof Phantom phantom) {
+                tagAndBuff(phantom, progress);
+                phantom.setTarget(player);
+            } else {
+                spawned.remove();
+            }
+        }
     }
 
-    private Location findSpawnNear(Player player, World world) {
+    private Location findCivilizationCenter(Player player, World world) {
+        int radius = Math.max(16, configManager.getInt("nightfall.spawns.village-radius", 96));
+        Location origin = player.getLocation();
+        Map<Long, SettlementCell> cells = new HashMap<>();
+
+        addBedIfInRange(cells, player.getBedSpawnLocation(), origin, radius);
+        for (Player other : world.getPlayers()) {
+            addBedIfInRange(cells, other.getBedSpawnLocation(), origin, radius);
+        }
+        scanBeds(cells, origin, radius);
+
+        for (Entity entity : world.getNearbyEntities(origin, radius, 64.0, radius)) {
+            if (entity instanceof Villager villager && !villager.isDead()) {
+                addSettlementPoint(cells, villager.getLocation(), PointKind.VILLAGER);
+            }
+        }
+
+        Location structure = world.locateNearestStructure(origin, StructureType.VILLAGE, radius, false);
+        if (isInRange(structure, origin, radius)) {
+            addSettlementPoint(cells, structure, PointKind.STRUCTURE);
+        }
+
+        SettlementCell best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (SettlementCell cell : cells.values()) {
+            int score = cell.score();
+            if (score <= 0) {
+                continue;
+            }
+            Location center = cell.center(world);
+            double distance = center.distanceSquared(origin);
+            if (best == null || score > best.score() || (score == best.score() && distance < bestDistance)) {
+                best = cell;
+                bestDistance = distance;
+            }
+        }
+        return best == null ? null : best.center(world);
+    }
+
+    private void scanBeds(Map<Long, SettlementCell> cells, Location origin, int radius) {
+        World world = origin.getWorld();
+        int step = 4;
+        int yMin = Math.max(world.getMinHeight(), origin.getBlockY() - 4);
+        int yMax = Math.min(world.getMaxHeight() - 1, origin.getBlockY() + 6);
+        int originX = origin.getBlockX();
+        int originZ = origin.getBlockZ();
+        for (int x = originX - radius; x <= originX + radius; x += step) {
+            for (int z = originZ - radius; z <= originZ + radius; z += step) {
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                    continue;
+                }
+                for (int y = yMin; y <= yMax; y += 2) {
+                    if (Tag.BEDS.isTagged(world.getBlockAt(x, y, z).getType())) {
+                        addSettlementPoint(
+                                cells,
+                                new Location(world, x + 0.5, y, z + 0.5),
+                                PointKind.BED);
+                    }
+                }
+            }
+        }
+    }
+
+    private void addBedIfInRange(
+            Map<Long, SettlementCell> cells,
+            Location bed,
+            Location origin,
+            int radius
+    ) {
+        if (isInRange(bed, origin, radius)) {
+            addSettlementPoint(cells, bed, PointKind.BED);
+        }
+    }
+
+    private static boolean isInRange(Location candidate, Location origin, int radius) {
+        return candidate != null
+                && candidate.getWorld() != null
+                && origin.getWorld() != null
+                && candidate.getWorld().equals(origin.getWorld())
+                && candidate.distanceSquared(origin) <= (double) radius * radius;
+    }
+
+    private static void addSettlementPoint(
+            Map<Long, SettlementCell> cells,
+            Location location,
+            PointKind kind
+    ) {
+        long key = (((long) (location.getBlockX() >> 6)) << 32) ^ (location.getBlockZ() >> 6);
+        cells.computeIfAbsent(key, ignored -> new SettlementCell()).add(location, kind);
+    }
+
+    private String villageKey(Location village) {
+        return village.getWorld().getUID()
+                + ":" + (village.getBlockX() >> 6)
+                + ":" + (village.getBlockZ() >> 6);
+    }
+
+    private Location findSpawnNear(Location origin, World world) {
         double min = Math.max(1.0, configManager.getDouble("nightfall.spawns.min-distance", 16.0));
         double max = Math.max(min, configManager.getDouble("nightfall.spawns.max-distance", 40.0));
         int attempts = Math.max(1, configManager.getInt("nightfall.spawns.location-attempts", 12));
@@ -512,8 +774,8 @@ public final class NightfallManager {
         for (int attempt = 0; attempt < attempts; attempt++) {
             double angle = random.nextDouble(Math.PI * 2.0);
             double distance = random.nextDouble(min, max + 0.01);
-            int x = (int) Math.floor(player.getX() + Math.cos(angle) * distance);
-            int z = (int) Math.floor(player.getZ() + Math.sin(angle) * distance);
+            int x = (int) Math.floor(origin.getX() + Math.cos(angle) * distance);
+            int z = (int) Math.floor(origin.getZ() + Math.sin(angle) * distance);
             if (!world.isChunkLoaded(x >> 4, z >> 4)) {
                 continue;
             }
@@ -532,10 +794,10 @@ public final class NightfallManager {
         return null;
     }
 
-    private int countNearbyNightfallMobs(Player player) {
+    private int countNearbyNightfallMobs(Location origin) {
         double radius = Math.max(1.0, configManager.getDouble("nightfall.spawns.nearby-radius", 48.0));
         int count = 0;
-        for (Entity entity : player.getWorld().getNearbyEntities(player.getLocation(), radius, radius, radius)) {
+        for (Entity entity : origin.getWorld().getNearbyEntities(origin, radius, radius, radius)) {
             if (entity instanceof LivingEntity living
                     && living.getPersistentDataContainer().has(nightfallMobKey, PersistentDataType.BYTE)) {
                 count++;
@@ -551,7 +813,7 @@ public final class NightfallManager {
             applyScalar(health, healthModifierKey, NightfallEscalation.multiplier(
                     progress,
                     firstNight,
-                    configManager.getDouble("nightfall.mob-strength.max-health-bonus", 1.5)));
+                    configManager.getDouble("nightfall.mob-strength.max-health-bonus", 0.5)));
             if (healToFull) {
                 entity.setHealth(health.getValue());
             }
@@ -561,7 +823,7 @@ public final class NightfallManager {
             applyScalar(damage, damageModifierKey, NightfallEscalation.multiplier(
                     progress,
                     firstNight,
-                    configManager.getDouble("nightfall.mob-strength.max-damage-bonus", 0.5)));
+                    configManager.getDouble("nightfall.mob-strength.max-damage-bonus", 0.25)));
         }
         // Only zombies get faster; everything else keeps vanilla speed. Speed has
         // no first-night floor (it is excluded from the baseline buff).
@@ -659,7 +921,7 @@ public final class NightfallManager {
     private void reloadCachedSets() {
         siegeComposition = parseComposition();
         jockeyMounts = parseEntityTypes(configManager.getStringList("nightfall.jockeys.mounts"));
-        jockeyRiders = parseRiders(configManager.getStringList("nightfall.jockeys.riders"));
+        jockeyRiders = parseRiders();
         sounds = List.copyOf(configManager.getStringList("nightfall.sounds.list"));
         soundCategory = parseSoundCategory(configManager.getString("nightfall.sounds.category", "master"));
     }
@@ -680,23 +942,41 @@ public final class NightfallManager {
         return List.copyOf(composition);
     }
 
-    private List<JockeyRider> parseRiders(Iterable<String> values) {
+    private List<JockeyRider> parseRiders() {
         List<JockeyRider> riders = new ArrayList<>();
-        for (String value : values) {
-            String key = value.toLowerCase(Locale.ROOT).trim();
-            if (key.equals("baby_zombie") || key.equals("baby-zombie")) {
-                riders.add(new JockeyRider(EntityType.ZOMBIE, true));
-                continue;
+        Map<String, Integer> weighted = configManager.getIntMap("nightfall.jockeys.riders");
+        if (!weighted.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : weighted.entrySet()) {
+                addRider(riders, entry.getKey(), Math.max(0, entry.getValue()));
             }
-            EntityType type = parseLivingType(key);
-            if (type != null) {
-                riders.add(new JockeyRider(type, false));
+        } else {
+            for (String value : configManager.getStringList("nightfall.jockeys.riders")) {
+                addRider(riders, value, 1);
             }
         }
         if (riders.isEmpty()) {
-            riders.add(new JockeyRider(EntityType.SKELETON, false));
+            riders.add(new JockeyRider(EntityType.SKELETON, false, 1));
         }
         return List.copyOf(riders);
+    }
+
+    private void addRider(List<JockeyRider> riders, String raw, int weight) {
+        if (weight <= 0) {
+            return;
+        }
+        String key = raw.toLowerCase(Locale.ROOT).trim();
+        if (key.equals("baby_zombie") || key.equals("baby-zombie")) {
+            riders.add(new JockeyRider(EntityType.ZOMBIE, true, weight));
+            return;
+        }
+        if (key.equals("baby_husk") || key.equals("baby-husk")) {
+            riders.add(new JockeyRider(EntityType.HUSK, true, weight));
+            return;
+        }
+        EntityType type = parseLivingType(key);
+        if (type != null) {
+            riders.add(new JockeyRider(type, false, weight));
+        }
     }
 
     private List<EntityType> parseEntityTypes(Iterable<String> values) {
@@ -726,7 +1006,46 @@ public final class NightfallManager {
     private record WeightedType(EntityType type, int weight) {
     }
 
-    private record JockeyRider(EntityType type, boolean baby) {
+    private record JockeyRider(EntityType type, boolean baby, int weight) {
+    }
+
+    private enum PointKind {
+        BED,
+        VILLAGER,
+        STRUCTURE
+    }
+
+    private static final class SettlementCell {
+        private int beds;
+        private int villagers;
+        private boolean structure;
+        private double sumX;
+        private double sumY;
+        private double sumZ;
+        private int points;
+
+        private void add(Location location, PointKind kind) {
+            switch (kind) {
+                case BED -> beds++;
+                case VILLAGER -> villagers++;
+                case STRUCTURE -> structure = true;
+            }
+            sumX += location.getX();
+            sumY += location.getY();
+            sumZ += location.getZ();
+            points++;
+        }
+
+        private int score() {
+            return NightfallEscalation.settlementScore(beds, villagers, structure);
+        }
+
+        private Location center(World world) {
+            if (points <= 0) {
+                return new Location(world, 0.5, world.getMinHeight(), 0.5);
+            }
+            return new Location(world, sumX / points, sumY / points, sumZ / points);
+        }
     }
 
     private void loadClock() {
