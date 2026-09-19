@@ -4,6 +4,8 @@ CivPressure is a configurable Paper plugin that uses biome-specialized resources
 regional seasons, environmental hazards, and increased mob health to encourage
 settlement, migration, trade, cooperation, and conflict.
 
+Research / design briefing for the team: [docs/PRD.md](docs/PRD.md).
+
 ## Requirements
 
 - Minecraft/Paper 26.3
